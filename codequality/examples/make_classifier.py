@@ -12,17 +12,34 @@ def parse_args():
     return parser.parse_args()
 
 
-def evaluate(frame):
-    print(frame)
+def evaluate(frame, type):
+    print(frame.dtypes)
+    frame = frame.drop([
+        'severity',
+        'CommitHashPrefix',
+        'Name',
+        'File'
+    ], axis=1)
+    frame['smell'] = frame['smell'].apply(lambda value: True if value == type else False)
+    print(frame['smell'].describe())
+    print(frame['smell'].value_counts())
+    # logging.info('Class balance: %d/%d' % ())
+    print(frame.head(5))
 
 
 def run(args):
-    files = os.listdir(args.matrices_dir)
+    files = os.listdir(args.input_dir)
 
     for idx, file in enumerate(files):
-        file = os.path.join(args.matrices_dir, file)
+        file_name = os.path.splitext(file)[0]
+        file_extension = os.path.splitext(file)[-1]
+        if os.path.splitext(file)[-1] != '.csv':
+            logging.info("skipping file: %s (extension %s)" % (file, file_extension))
+            continue
+
+        file = os.path.join(args.input_dir, file)
         frame = pd.read_csv(file)
-        evaluate(frame)
+        evaluate(frame, file_name)
 
 
 if __name__ == '__main__':

@@ -17,8 +17,16 @@ def parse_args():
     return parser.parse_args()
 
 
-def get_data_and_labels(frame: pd.DataFrame, smell_type: str):
+def get_data_and_labels(frame: pd.DataFrame, smell_type: str, random_seed: int):
     frame['smell'] = frame['smell'].apply(lambda value: True if value == smell_type else False)
+
+    df_majority = frame[~frame['smell']]
+    df_minority = frame[frame['smell']]
+    df_majority_downsampled = sklearn.utils.resample(
+        df_majority, replace=True, n_samples=len(df_minority),
+        random_state=random_seed)
+    frame = pd.concat([df_majority_downsampled, df_minority])
+
     y = frame['smell'].to_numpy(dtype=bool)
 
     logging.info("Dtypes:\n" + str(frame.dtypes))
@@ -33,12 +41,12 @@ def get_data_and_labels(frame: pd.DataFrame, smell_type: str):
     return frame.to_numpy(dtype=float), y
 
 
-def evaluate(frame, smell_type):
+def evaluate(frame: pd.DataFrame, smell_type: str, random_seed: int):
     data, labels = get_data_and_labels(frame, smell_type)
     classifier = sklearn.pipeline.make_pipeline(
         sklearn.impute.SimpleImputer(strategy='constant', fill_value=-1.0),
         sklearn.feature_selection.VarianceThreshold(),
-        sklearn.ensemble.RandomForestClassifier()
+        sklearn.ensemble.RandomForestClassifier(random_state=random_seed)
     )
     result = sklearn.model_selection.cross_val_score(classifier, data, labels)
     return result
@@ -46,6 +54,7 @@ def evaluate(frame, smell_type):
 
 def run(args):
     files = os.listdir(args.input_dir)
+    random_seed = 0
 
     for idx, file in enumerate(files):
         file_name = os.path.splitext(file)[0]
@@ -56,7 +65,7 @@ def run(args):
 
         file = os.path.join(args.input_dir, file)
         frame = pd.read_csv(file)
-        result = evaluate(frame, file_name)
+        result = evaluate(frame, file_name, random_seed)
         print(result)
 
 

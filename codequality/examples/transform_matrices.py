@@ -51,6 +51,8 @@ def run(args):
             continue
 
         result = pd.DataFrame(all_data)
+        # ensure commithas is a string, so it does not get mistaken for scientific notation
+        result['CommitHashPrefix'] = result['CommitHashPrefix'].astype(str)
         result = result.set_index(['CommitHashPrefix', 'Name'])
         result.to_csv(os.path.join(args.output_dir, '%s-%s.csv' % (project_name, commitHashPrefix)))
 

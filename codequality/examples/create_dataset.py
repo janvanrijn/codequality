@@ -7,6 +7,7 @@ import pandas as pd
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--matrices_dir', type=str, default=os.path.expanduser('~/Downloads/MLCQ_software_matrices/'))
+    parser.add_argument('--matrices_more_dir', type=str, default=os.path.expanduser('~/Downloads/matrices_processed/'))
     parser.add_argument('--output_dir', type=str, default=os.path.expanduser('~/experiments/code_smells/'))
     parser.add_argument('--code_smells_path', type=str, default=os.path.expanduser('../data/code_smells.csv'))
     parser.add_argument('--max_projects', type=int, default=None)
@@ -52,6 +53,19 @@ def run(args):
             # 'Project',
         ])
         project_frame = project_frame.join(project_code_smells, how='left')
+
+        more_metrics_file = os.path.join(args.matrices_more_dir, file)
+        if not os.path.isfile(more_metrics_file):
+            logging.warning('Could not find more metrics')
+        else:
+            more_metrics = pd.read_csv(more_metrics_file)
+            # prevent mixup with scientific notation
+            more_metrics['CommitHashPrefix'] = more_metrics['CommitHashPrefix'].astype(str)
+            more_metrics = more_metrics.set_index([
+                'CommitHashPrefix',
+                'Name'
+            ])
+            project_frame = project_frame.join(more_metrics, how='left')
 
         if all_projects_frame is None:
             all_projects_frame = project_frame

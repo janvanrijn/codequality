@@ -36,14 +36,22 @@ def run(args):
         project_frame = pd.read_csv(os.path.join(args.matrices_dir, file))
         for _, row in project_frame.iterrows():
             basename = os.path.basename(row['File'])
+            # obtains all text between brackets
             metrics_unparsed = re.search(r'\((.*?)\)', row['Description']).group(1)
+            # removes procent signs and illegal numbers
+            metrics_unparsed = metrics_unparsed.replace('%', '').replace('NAN', '')
+            # prepares the string to be json parsable
             metrics_unparsed = '{"' + metrics_unparsed.replace('=', '": "').replace(', ', '","') + '"}'
             record = json.loads(metrics_unparsed)
             record['CommitHashPrefix'] = commitHashPrefix
             record['Name'] = "%s.%s" % (row['Package'], os.path.splitext(basename)[0])
-
             all_data.append(record)
-        result = pd.DataFrame(all_data).set_index(['CommitHashPrefix', 'Name'])
+        if len(all_data) == 0:
+            logging.warning('Project %s (%s) does not contain any matrices' % (project_name, commitHashPrefix))
+            continue
+
+        result = pd.DataFrame(all_data)
+        result = result.set_index(['CommitHashPrefix', 'Name'])
         result.to_csv(os.path.join(args.output_dir, '%s-%s.csv' % (project_name, commitHashPrefix)))
 
 

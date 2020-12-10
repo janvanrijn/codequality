@@ -2,7 +2,12 @@ import argparse
 import logging
 import os
 import pandas as pd
+
 import sklearn
+import sklearn.ensemble
+import sklearn.feature_selection
+import sklearn.impute
+import sklearn.pipeline
 
 
 def parse_args():
@@ -12,19 +17,31 @@ def parse_args():
     return parser.parse_args()
 
 
-def evaluate(frame, type):
-    print(frame.dtypes)
+def get_data_and_labels(frame: pd.DataFrame, smell_type: str):
+    frame['smell'] = frame['smell'].apply(lambda value: True if value == smell_type else False)
+    y = frame['smell'].to_numpy(dtype=bool)
+
+    logging.info("Dtypes:\n" + str(frame.dtypes))
+    logging.info("Values Count:\n" + str(frame['smell'].value_counts()))
     frame = frame.drop([
         'severity',
         'CommitHashPrefix',
         'Name',
-        'File'
+        'File',
+        'smell'
     ], axis=1)
-    frame['smell'] = frame['smell'].apply(lambda value: True if value == type else False)
-    print(frame['smell'].describe())
-    print(frame['smell'].value_counts())
-    # logging.info('Class balance: %d/%d' % ())
-    print(frame.head(5))
+    return frame.to_numpy(dtype=float), y
+
+
+def evaluate(frame, smell_type):
+    data, labels = get_data_and_labels(frame, smell_type)
+    classifier = sklearn.pipeline.make_pipeline(
+        sklearn.impute.SimpleImputer(strategy='constant', fill_value=-1.0),
+        sklearn.feature_selection.VarianceThreshold(),
+        sklearn.ensemble.RandomForestClassifier()
+    )
+    result = sklearn.model_selection.cross_val_score(classifier, data, labels)
+    return result
 
 
 def run(args):
@@ -39,7 +56,8 @@ def run(args):
 
         file = os.path.join(args.input_dir, file)
         frame = pd.read_csv(file)
-        evaluate(frame, file_name)
+        result = evaluate(frame, file_name)
+        print(result)
 
 
 if __name__ == '__main__':

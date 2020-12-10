@@ -52,6 +52,9 @@ def run(args):
             'Name',
             # 'Project',
         ])
+        # TODO: catch if not exists (need to be away for numeric frame)
+        project_frame = project_frame.drop('File', axis=1)
+
         project_frame = project_frame.astype(dtype=float)
         project_frame = project_frame.join(project_code_smells, how='left')
 

@@ -42,6 +42,7 @@ def run(args):
             metrics_unparsed = metrics_unparsed.replace('%', '').replace('NAN', '')
             # prepares the string to be json parsable
             metrics_unparsed = '{"' + metrics_unparsed.replace('=', '": "').replace(', ', '","') + '"}'
+            # TODO: parse away the , between 1000 numbers!!
             record = json.loads(metrics_unparsed)
             record['CommitHashPrefix'] = commitHashPrefix
             record['Name'] = "%s.%s" % (row['Package'], os.path.splitext(basename)[0])

@@ -28,7 +28,7 @@ def run(args):
     all_code_smells_frame['Name'] = all_code_smells_frame['code_name']
     all_code_smells_frame = all_code_smells_frame[['CommitHashPrefix', 'Name', 'smell', 'severity']]
 
-    all_projects_frame = None
+    list_projects_frames = []
     for idx, file in enumerate(files):
         file_extension = os.path.splitext(file)[-1]
         if os.path.splitext(file)[-1] != '.csv':
@@ -52,26 +52,36 @@ def run(args):
             'Name',
             # 'Project',
         ])
+        project_frame = project_frame.astype(dtype=float)
         project_frame = project_frame.join(project_code_smells, how='left')
 
         more_metrics_file = os.path.join(args.matrices_more_dir, file)
         if not os.path.isfile(more_metrics_file):
-            logging.warning('Could not find more metrics')
-        else:
-            more_metrics = pd.read_csv(more_metrics_file)
-            # prevent mixup with scientific notation
-            more_metrics['CommitHashPrefix'] = more_metrics['CommitHashPrefix'].astype(str)
-            more_metrics = more_metrics.set_index([
-                'CommitHashPrefix',
-                'Name'
-            ])
-            project_frame = project_frame.join(more_metrics, how='left')
+            logging.warning('Could not find more metrics for %s' % file)
+            continue
 
-        if all_projects_frame is None:
-            all_projects_frame = project_frame
-        else:
-            all_projects_frame = all_projects_frame.append(project_frame)
-            logging.info("all_projects_frame: %s" % str(all_projects_frame.shape))
+        more_metrics = pd.read_csv(more_metrics_file)
+        # prevent mixup with scientific notation
+        more_metrics['CommitHashPrefix'] = more_metrics['CommitHashPrefix'].astype(str)
+        more_metrics = more_metrics.set_index([
+            'CommitHashPrefix',
+            'Name'
+        ])
+        more_metrics = more_metrics.astype(dtype=float)
+
+        project_frame = project_frame.join(more_metrics, how='left')
+        list_projects_frames.append(project_frame)
+        if set(list_projects_frames[0].columns) != set(list_projects_frames[-1].columns):
+            orig = set(list_projects_frames[0].columns)
+            new = set(list_projects_frames[-1].columns)
+            missing = orig - new
+            additional = new - orig
+
+            # happens.
+            logging.warning('Column set does not match for %s. Missing: %s, Additional: %s' % (file, missing, additional))
+            continue
+
+    all_projects_frame = list_projects_frames[0].append(list_projects_frames[1:])
     all_projects_frame.to_csv(os.path.join(args.output_dir, "%s.csv" % args.smell_type))
 
 

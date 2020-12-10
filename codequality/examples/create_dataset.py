@@ -9,7 +9,7 @@ def parse_args():
     parser.add_argument('--matrices_dir', type=str, default=os.path.expanduser('~/Downloads/MLCQ_software_matrices/'))
     parser.add_argument('--output_dir', type=str, default=os.path.expanduser('~/experiments/code_smells/'))
     parser.add_argument('--code_smells_path', type=str, default=os.path.expanduser('../data/code_smells.csv'))
-    parser.add_argument('--max_projects', type=int, default=50)
+    parser.add_argument('--max_projects', type=int, default=None)
     parser.add_argument('--smell_type', type=str, default='data class')
 
     return parser.parse_args()

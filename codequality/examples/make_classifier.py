@@ -1,7 +1,9 @@
 import argparse
 import logging
+import numpy as np
 import os
 import pandas as pd
+import typing
 
 import sklearn
 import sklearn.ensemble
@@ -41,20 +43,23 @@ def get_data_and_labels(frame: pd.DataFrame, smell_type: str, random_seed: int):
     return frame.to_numpy(dtype=float), y
 
 
-def evaluate(frame: pd.DataFrame, smell_type: str, random_seed: int):
-    data, labels = get_data_and_labels(frame, smell_type)
+def evaluate(frame: pd.DataFrame, smell_type: str, scorers: typing.List[str], random_seed: int):
+    data, labels = get_data_and_labels(frame, smell_type, random_seed)
     classifier = sklearn.pipeline.make_pipeline(
         sklearn.impute.SimpleImputer(strategy='constant', fill_value=-1.0),
         sklearn.feature_selection.VarianceThreshold(),
         sklearn.ensemble.RandomForestClassifier(random_state=random_seed)
     )
-    result = sklearn.model_selection.cross_val_score(classifier, data, labels)
+    result = sklearn.model_selection.cross_validate(
+        classifier, data, labels, scoring=scorers, cv=10)
     return result
 
 
 def run(args):
     files = os.listdir(args.input_dir)
     random_seed = 0
+    # precision / recall for binary targets
+    scorers = ['accuracy', 'precision', 'recall']
 
     for idx, file in enumerate(files):
         file_name = os.path.splitext(file)[0]
@@ -65,8 +70,11 @@ def run(args):
 
         file = os.path.join(args.input_dir, file)
         frame = pd.read_csv(file)
-        result = evaluate(frame, file_name, random_seed)
-        print(result)
+        all_results = evaluate(frame, file_name, scorers, random_seed)
+        for scorer in scorers:
+            result = all_results["test_%s" % scorer]
+            logging.info("%s: %f +/- %f" % (
+                scorer, float(np.mean(result)), float(np.std(result))))
 
 
 if __name__ == '__main__':

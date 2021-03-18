@@ -7,9 +7,9 @@ import re
 
 
 def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--matrices_dir', type=str, default=os.path.expanduser('~/Downloads/matrices/'))
-    parser.add_argument('--output_dir', type=str, default=os.path.expanduser('~/Downloads/matrices_processed/'))
+    parser = argparse.ArgumentParser('transforms PMD matrices')
+    parser.add_argument('--matrices_dir', type=str, default=os.path.expanduser('~/data/codequality/PMD_matrices/'))
+    parser.add_argument('--output_dir', type=str, default=os.path.expanduser('~/data/codequality/PMD_matrices_processed/'))
     parser.add_argument('--max_projects', type=int, default=None)
 
     return parser.parse_args()
@@ -32,7 +32,6 @@ def run(args):
         filename_base = os.path.splitext(file)[0]
         project_name = '-'.join(filename_base.split('-')[:-1])
         commitHash = filename_base.split('-')[-1]
-        commitHashPrefix = commitHash[:7]
         project_frame = pd.read_csv(os.path.join(args.matrices_dir, file))
         for _, row in project_frame.iterrows():
             basename = os.path.basename(row['File'])
@@ -48,18 +47,18 @@ def run(args):
                 if ',' in item:
                     logging.warning('file %s contains numbers with comma in it: %s. Will be replaced.' % (file, item))
                     record[key] = item.replace(',', '')
-            record['CommitHashPrefix'] = commitHashPrefix
+            record['CommitHash'] = commitHash
             record['Name'] = "%s.%s" % (row['Package'], os.path.splitext(basename)[0])
             all_data.append(record)
         if len(all_data) == 0:
-            logging.warning('Project %s (%s) does not contain any matrices' % (project_name, commitHashPrefix))
+            logging.warning('Project %s (%s) does not contain any matrices' % (project_name, commitHash))
             continue
 
         result = pd.DataFrame(all_data)
         # ensure commithas is a string, so it does not get mistaken for scientific notation
-        result['CommitHashPrefix'] = result['CommitHashPrefix'].astype(str)
-        result = result.set_index(['CommitHashPrefix', 'Name'])
-        result.to_csv(os.path.join(args.output_dir, '%s-%s.csv' % (project_name, commitHashPrefix)))
+        result['CommitHash'] = result['CommitHash'].astype(str)
+        result = result.set_index(['CommitHash', 'Name'])
+        result.to_csv(os.path.join(args.output_dir, '%s-%s.csv' % (project_name, commitHash)))
 
 
 if __name__ == '__main__':

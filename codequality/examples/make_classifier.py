@@ -37,7 +37,6 @@ def get_data_and_labels(frame: pd.DataFrame, smell_type: str, random_seed: int):
         'severity',
         'CommitHashPrefix',
         'Name',
-        'File',
         'smell'
     ], axis=1)
     return frame.to_numpy(dtype=float), y

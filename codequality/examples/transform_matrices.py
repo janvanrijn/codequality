@@ -44,6 +44,10 @@ def run(args):
             metrics_unparsed = '{"' + metrics_unparsed.replace('=', '": "').replace(', ', '","') + '"}'
             # TODO: parse away the , between 1000 numbers!!
             record = json.loads(metrics_unparsed)
+            for key, item in record.items():
+                if ',' in item:
+                    logging.warning('file %s contains numbers with comma in it: %s. Will be replaced.' % (file, item))
+                    record[key] = item.replace(',', '')
             record['CommitHashPrefix'] = commitHashPrefix
             record['Name'] = "%s.%s" % (row['Package'], os.path.splitext(basename)[0])
             all_data.append(record)

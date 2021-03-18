@@ -53,10 +53,19 @@ def run(args):
             # 'Project',
         ])
         # TODO: catch if not exists (need to be away for numeric frame)
-        project_frame = project_frame.drop('File', axis=1)
+        if 'File' in project_frame.columns:
+            project_frame = project_frame.drop('File', axis=1)
+        else:
+            logging.warning('File %s does not contain a "file" column' % file)
 
         project_frame = project_frame.astype(dtype=float)
+        dimensions_old = project_frame.shape
         project_frame = project_frame.join(project_code_smells, how='left')
+        dimensions_new = project_frame.shape
+        if dimensions_new[0] != dimensions_old[0]:
+            raise ValueError('File %s New Rows have been introduced: %d vs %d' % (file, dimensions_new[0], dimensions_old[0]))
+        if dimensions_new[1] - dimensions_old[1] != 2:
+            raise ValueError('File %s does not contain a plausible new column count' % file)
 
         more_metrics_file = os.path.join(args.matrices_more_dir, file)
         if not os.path.isfile(more_metrics_file):
@@ -71,6 +80,8 @@ def run(args):
             'Name'
         ])
         more_metrics = more_metrics.astype(dtype=float)
+        if len(more_metrics) != len(project_frame):
+            logging.warning('%s: Project frame contains %d lines, new metrics contains %d' % (file, len(project_frame), len(more_metrics)))
 
         project_frame = project_frame.join(more_metrics, how='left')
         list_projects_frames.append(project_frame)

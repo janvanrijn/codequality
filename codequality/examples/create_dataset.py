@@ -6,8 +6,8 @@ import pandas as pd
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--matrices_dir', type=str, default=os.path.expanduser('~/Downloads/MLCQ_software_matrices/'))
-    parser.add_argument('--matrices_more_dir', type=str, default=os.path.expanduser('~/Downloads/matrices_processed/'))
+    parser.add_argument('--matrices_dir', type=str, default=os.path.expanduser('~/data/codequality/MLCQ_matrices'))
+    parser.add_argument('--matrices_more_dir', type=str, default=os.path.expanduser('~/data/codequality/PMD_matrices_processed'))
     parser.add_argument('--output_dir', type=str, default=os.path.expanduser('~/experiments/code_smells/'))
     parser.add_argument('--code_smells_path', type=str, default=os.path.expanduser('../data/code_smells.csv'))
     parser.add_argument('--max_projects', type=int, default=None)
@@ -24,9 +24,10 @@ def run(args):
 
     all_code_smells_frame = pd.read_csv(args.code_smells_path)
     all_code_smells_frame = all_code_smells_frame[all_code_smells_frame['smell'] == args.smell_type]
-    all_code_smells_frame['CommitHashPrefix'] = all_code_smells_frame['commit_hash'].str[:7]
+    # rename
+    all_code_smells_frame['CommitHash'] = all_code_smells_frame['commit_hash']
     all_code_smells_frame['Name'] = all_code_smells_frame['code_name']
-    all_code_smells_frame = all_code_smells_frame[['CommitHashPrefix', 'Name', 'smell', 'severity']]
+    all_code_smells_frame = all_code_smells_frame[['CommitHash', 'Name', 'smell', 'severity']]
 
     list_projects_frames = []
     for idx, file in enumerate(files):
@@ -38,20 +39,27 @@ def run(args):
         file_prefix = os.path.splitext(file)[0]
         file_splitted = file_prefix.split('-')
 
-        project_code_smells = all_code_smells_frame[all_code_smells_frame['CommitHashPrefix'] == file_splitted[-1]]
-        project_code_smells = project_code_smells.set_index(['CommitHashPrefix', 'Name'])
+        project_code_smells = all_code_smells_frame[all_code_smells_frame['CommitHash'] == file_splitted[-1]]
+        project_code_smells = project_code_smells.set_index(['CommitHash', 'Name'])
+        # removes duplicated entrees
+        project_code_smells = project_code_smells[~project_code_smells.index.duplicated(keep='first')]
+        # TODO: do something about duplicate reviewers (if they don't agree)
 
         logging.info("code smells: %d" % len(project_code_smells))
 
         project_frame = pd.read_csv(os.path.join(args.matrices_dir, file))
-        project_frame = project_frame[project_frame['Kind'] == 'Public Class'].drop('Kind', axis=1)
+        project_frame = project_frame.drop('Kind', axis=1)
         # project_frame['Project'] = '-'.join(file_splitted)
-        project_frame['CommitHashPrefix'] = file_splitted[-1]
+        # commit hash is actually overkill..
+        project_frame['CommitHash'] = file_splitted[-1]
         project_frame = project_frame.set_index([
-            'CommitHashPrefix',
+            'CommitHash',
             'Name',
             # 'Project',
         ])
+        # removes duplicates. TODO: why are there duplicates? Ask Cat
+        project_frame = project_frame[~project_frame.index.duplicated(keep='first')]
+
         # TODO: catch if not exists (need to be away for numeric frame)
         if 'File' in project_frame.columns:
             project_frame = project_frame.drop('File', axis=1)
@@ -60,11 +68,14 @@ def run(args):
 
         project_frame = project_frame.astype(dtype=float)
         dimensions_old = project_frame.shape
-        project_frame = project_frame.join(project_code_smells, how='left')
-        dimensions_new = project_frame.shape
-        if dimensions_new[0] != dimensions_old[0]:
-            raise ValueError('File %s New Rows have been introduced: %d vs %d' % (file, dimensions_new[0], dimensions_old[0]))
-        if dimensions_new[1] - dimensions_old[1] != 2:
+        # the following line determines how to handle the records.
+        # inner join means: only keep records that occur in both datasets
+        project_frame = project_frame.join(project_code_smells, how='inner')
+        if project_frame.shape[0] > len(project_code_smells):
+            raise ValueError('File %s Too much rows: %d vs %d' % (file, project_frame.shape[0], len(project_code_smells)))
+        if project_frame.shape[0] < len(project_code_smells):
+            logging.warning('File %s: Expected %d code smells, got only %d' % (file, len(project_code_smells), project_frame.shape[0]))
+        if project_frame.shape[1] - dimensions_old[1] != 2:
             raise ValueError('File %s does not contain a plausible new column count' % file)
 
         more_metrics_file = os.path.join(args.matrices_more_dir, file)
@@ -74,16 +85,15 @@ def run(args):
 
         more_metrics = pd.read_csv(more_metrics_file)
         # prevent mixup with scientific notation
-        more_metrics['CommitHashPrefix'] = more_metrics['CommitHashPrefix'].astype(str)
+        more_metrics['CommitHash'] = more_metrics['CommitHash'].astype(str)
         more_metrics = more_metrics.set_index([
-            'CommitHashPrefix',
+            'CommitHash',
             'Name'
         ])
         more_metrics = more_metrics.astype(dtype=float)
-        if len(more_metrics) != len(project_frame):
-            logging.warning('%s: Project frame contains %d lines, new metrics contains %d' % (file, len(project_frame), len(more_metrics)))
 
-        project_frame = project_frame.join(more_metrics, how='left')
+        # TODO: prevent duplicates
+        project_frame = project_frame.join(more_metrics, how='inner')
         list_projects_frames.append(project_frame)
         if set(list_projects_frames[0].columns) != set(list_projects_frames[-1].columns):
             orig = set(list_projects_frames[0].columns)

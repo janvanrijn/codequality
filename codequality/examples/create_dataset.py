@@ -21,13 +21,29 @@ def run(args):
     if args.max_projects:
         files = files[:args.max_projects]
     os.makedirs(args.output_dir, exist_ok=True)
+    missing_matrices = 0
 
     all_code_smells_frame = pd.read_csv(args.code_smells_path)
     all_code_smells_frame = all_code_smells_frame[all_code_smells_frame['smell'] == args.smell_type]
-    # rename
+
+    def rewrite_strategy(val: str):
+        if val == 'none':
+            return 0
+        elif val == 'minor':
+            return 1
+        elif val == 'major':
+            return 2
+        elif val == 'critical':
+            return 3
+        else:
+            raise ValueError('severity value: %s' % val)
+    all_code_smells_frame['severity'] = all_code_smells_frame['severity'].apply(rewrite_strategy)
     all_code_smells_frame['CommitHash'] = all_code_smells_frame['commit_hash']
     all_code_smells_frame['Name'] = all_code_smells_frame['code_name']
     all_code_smells_frame = all_code_smells_frame[['CommitHash', 'Name', 'smell', 'severity']]
+    all_code_smells_frame = all_code_smells_frame.groupby(['CommitHash', 'Name', 'smell']).mean()
+    all_code_smells_frame = all_code_smells_frame.reset_index()
+    logging.info("Number of records: %d" % len(all_code_smells_frame))
 
     list_projects_frames = []
     for idx, file in enumerate(files):
@@ -41,9 +57,6 @@ def run(args):
 
         project_code_smells = all_code_smells_frame[all_code_smells_frame['CommitHash'] == file_splitted[-1]]
         project_code_smells = project_code_smells.set_index(['CommitHash', 'Name'])
-        # removes duplicated entrees
-        project_code_smells = project_code_smells[~project_code_smells.index.duplicated(keep='first')]
-        # TODO: do something about duplicate reviewers (if they don't agree)
 
         logging.info("code smells: %d" % len(project_code_smells))
 
@@ -74,17 +87,14 @@ def run(args):
         if project_frame.shape[0] > len(project_code_smells):
             raise ValueError('File %s Too much rows: %d vs %d' % (file, project_frame.shape[0], len(project_code_smells)))
         if project_frame.shape[0] < len(project_code_smells):
-            logging.warning('File %s: Expected %d code smells, got only %d' % (file, len(project_code_smells), project_frame.shape[0]))
+            missing_matrices += len(project_code_smells) - project_frame.shape[0]
+            logging.warning('File %s: Expected %d rows after merge with MLCQ, got only %d' % (file, len(project_code_smells), project_frame.shape[0], ))
         if project_frame.shape[1] - dimensions_old[1] != 2:
             raise ValueError('File %s does not contain a plausible new column count' % file)
 
         more_metrics_file = os.path.join(args.matrices_more_dir, file)
-        if not os.path.isfile(more_metrics_file):
-            logging.warning('Could not find more metrics for %s' % file)
-            continue
-
         more_metrics = pd.read_csv(more_metrics_file)
-        # prevent mixup with scientific notation
+        # prevent mix-up with scientific notation
         more_metrics['CommitHash'] = more_metrics['CommitHash'].astype(str)
         more_metrics = more_metrics.set_index([
             'CommitHash',
@@ -93,6 +103,7 @@ def run(args):
         more_metrics = more_metrics.astype(dtype=float)
 
         # TODO: prevent duplicates
+        dimensions_old = project_frame.shape
         project_frame = project_frame.join(more_metrics, how='inner')
         list_projects_frames.append(project_frame)
         if set(list_projects_frames[0].columns) != set(list_projects_frames[-1].columns):
@@ -104,9 +115,14 @@ def run(args):
             # happens.
             logging.warning('Column set does not match for %s. Missing: %s, Additional: %s' % (file, missing, additional))
             continue
+        if dimensions_old[0] != len(project_frame):
+            logging.warning('File %s: Expected %d rows after merge with PMD, got only %d' % (file, dimensions_old[0], project_frame.shape[0]))
 
     all_projects_frame = list_projects_frames[0].append(list_projects_frames[1:])
     all_projects_frame.to_csv(os.path.join(args.output_dir, "%s.csv" % args.smell_type))
+    print(all_projects_frame['severity'].value_counts())
+    print("data frame len %d" % len(all_projects_frame['severity']))
+    print("missing matrices count: %d" % missing_matrices)
 
 
 if __name__ == '__main__':

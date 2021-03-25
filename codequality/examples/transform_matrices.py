@@ -8,7 +8,7 @@ import re
 
 def parse_args():
     parser = argparse.ArgumentParser('transforms PMD matrices')
-    parser.add_argument('--matrices_dir', type=str, default=os.path.expanduser('~/data/codequality/PMD_matrices/'))
+    parser.add_argument('--matrices_dir', type=str, default=os.path.expanduser('~/data/codequality/PMD_matrices_raw/'))
     parser.add_argument('--output_dir', type=str, default=os.path.expanduser('~/data/codequality/PMD_matrices_processed/'))
     parser.add_argument('--max_projects', type=int, default=None)
 

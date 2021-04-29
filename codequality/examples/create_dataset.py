@@ -127,6 +127,7 @@ def run(args):
             logging.warning('Column set does not match for %s. Missing: %s, Additional: %s' % (file, missing, additional))
 
     if len(commit_hashes_with_mlcq - commit_hashes_understand) > 0:
+        # TODO: remove from dataset. Throw error if record count still doesn't match
         logging.warning('missing commit hashes: %s' % str(commit_hashes_with_mlcq - commit_hashes_understand))
 
     output_file = os.path.join(args.output_dir, "%s.csv" % args.smell_type)

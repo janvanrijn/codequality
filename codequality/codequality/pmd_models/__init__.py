@@ -1,2 +1,2 @@
-from abstract_model import AbstractModel
-from blob_model import BlobModel
+from .blob_model import BlobModel
+from .dataclass_model import DataClassModel

@@ -5,6 +5,8 @@ import os
 import pandas as pd
 import typing
 
+import codequality.pmd_models
+
 import sklearn
 import sklearn.dummy
 import sklearn.ensemble
@@ -17,7 +19,7 @@ import sklearn.tree
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_dir', type=str, default=os.path.expanduser('~/experiments/code_smells/'))
-    parser.add_argument('--severity_threshold', type=int, default=0.5)
+    parser.add_argument('--severity_threshold', type=int, default=0.75)
 
     return parser.parse_args()
 
@@ -61,10 +63,11 @@ def run(args):
     clfs = [
         sklearn.dummy.DummyClassifier(random_state=random_seed),
         sklearn.tree.DecisionTreeClassifier(random_state=random_seed),
-        sklearn.ensemble.RandomForestClassifier(random_state=random_seed)
+        sklearn.ensemble.RandomForestClassifier(random_state=random_seed, n_estimators=100)
     ]
 
     for idx, file in enumerate(files):
+        filename = os.path.basename(file)
         file_extension = os.path.splitext(file)[-1]
         if os.path.splitext(file)[-1] != '.csv':
             logging.info("skipping file: %s (extension %s)" % (file, file_extension))
@@ -81,6 +84,19 @@ def run(args):
                 logging.info("%s %s %s: %f +/- %f" % (
                     os.path.basename(file), str(clf), scorer,
                     float(np.mean(result)), float(np.std(result))))
+        if filename == 'data class.csv':
+            handmade = codequality.pmd_models.DataClassModel()
+        elif filename == 'blob.csv':
+            handmade = codequality.pmd_models.BlobModel()
+        else:
+            raise ValueError('not recognized file: %s' % file)
+        y_hat = handmade.predict(frame)
+        precision = sklearn.metrics.precision_score(labels, y_hat)
+        recall = sklearn.metrics.recall_score(labels, y_hat)
+        accuracy = sklearn.metrics.accuracy_score(labels, y_hat)
+        logging.info("%s handmade accuracy: %f" % (os.path.basename(file), accuracy))
+        logging.info("%s handmade precision: %f" % (os.path.basename(file), precision))
+        logging.info("%s handmade recall: %f" % (os.path.basename(file), recall))
 
 
 if __name__ == '__main__':

@@ -58,7 +58,7 @@ def run(args):
     files = os.listdir(args.input_dir)
     random_seed = 0
     # precision / recall for binary targets
-    scorers = ['accuracy', make_scorer(sklearn.metrics.precision_score, zero_division=0.0), 'recall']
+    scorers = ['accuracy', sklearn.metrics.make_scorer(sklearn.metrics.precision_score, zero_division=0.0), 'recall']
 
     clfs = [
         sklearn.dummy.DummyClassifier(random_state=random_seed),

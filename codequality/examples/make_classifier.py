@@ -19,7 +19,7 @@ import sklearn.tree
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_dir', type=str, default=os.path.expanduser('~/experiments/code_smells/'))
-    parser.add_argument('--severity_threshold', type=int, default=0.75)
+    parser.add_argument('--severity_threshold', type=float, default=0.75)
 
     return parser.parse_args()
 

@@ -59,9 +59,12 @@ def run(args):
     random_seed = 0
     # precision / recall for binary targets
     scorers = {
-        'accuracy': sklearn.metrics.make_scorer(sklearn.metrics.accuracy_score),
-        'precision': sklearn.metrics.make_scorer(sklearn.metrics.precision_score, zero_division=0.0), 
-        'recall': sklearn.metrics.make_scorer(sklearn.metrics.recall_score)
+        'accuracy': (sklearn.metrics.accuracy_score, {}),
+        'precision': (sklearn.metrics.precision_score, {zero_division: 0.0}), 
+        'recall': (sklearn.metrics.recall_score, {})
+    }
+    scorers_sklearn = {
+        k: sklearn.metrics.make_scorer(v[0], **v[1]) for k, v in scorers.items()
     }
 
     clfs = [
@@ -82,11 +85,11 @@ def run(args):
         data, labels = get_data_and_labels(frame, args.severity_threshold)
 
         for clf in clfs:
-            all_results = evaluate(data, labels, clf, scorers)
-            for scorer in scorers:
-                result = all_results["test_%s" % scorer]
+            all_results = evaluate(data, labels, clf, scorers_sklearn)
+            for scorer_name in scorers:
+                result = all_results["test_%s" % scorer_name]
                 logging.info("%s %s %s: %f +/- %f" % (
-                    os.path.basename(file), str(clf), scorer,
+                    os.path.basename(file), str(clf), scorer_name,
                     float(np.mean(result)), float(np.std(result))))
         if filename == 'data class.csv':
             handmade = codequality.pmd_models.DataClassModel()
@@ -95,8 +98,8 @@ def run(args):
         else:
             raise ValueError('not recognized file: %s' % file)
         y_hat = handmade.predict(frame)
-        for name, scorer_fn in scorers.items():
-            logging.info("%s handmade %s: %f" % (os.path.basename(file), name, scorer_fn(y_true=labels, y_pred=y_hat)))
+        for scorer_name, (scorer_fn, kwargs) in scorers.items():
+            logging.info("%s handmade %s: %f" % (os.path.basename(file), scorer_name, scorer_fn(labels, y_hat, **kwargs)))
 
 
 if __name__ == '__main__':

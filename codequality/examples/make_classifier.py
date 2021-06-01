@@ -58,7 +58,11 @@ def run(args):
     files = os.listdir(args.input_dir)
     random_seed = 0
     # precision / recall for binary targets
-    scorers = ['accuracy', sklearn.metrics.make_scorer(sklearn.metrics.precision_score, zero_division=0.0), 'recall']
+    scorers = {
+        'accuracy': sklearn.metrics.make_scorer(sklearn.metrics.accuracy_score),
+        'precision': sklearn.metrics.make_scorer(sklearn.metrics.precision_score, zero_division=0.0), 
+        'recall': sklearn.metrics.make_scorer(sklearn.metrics.recall_score)
+    }
 
     clfs = [
         sklearn.dummy.DummyClassifier(random_state=random_seed),
@@ -91,12 +95,8 @@ def run(args):
         else:
             raise ValueError('not recognized file: %s' % file)
         y_hat = handmade.predict(frame)
-        precision = sklearn.metrics.precision_score(labels, y_hat)
-        recall = sklearn.metrics.recall_score(labels, y_hat)
-        accuracy = sklearn.metrics.accuracy_score(labels, y_hat)
-        logging.info("%s handmade accuracy: %f" % (os.path.basename(file), accuracy))
-        logging.info("%s handmade precision: %f" % (os.path.basename(file), precision))
-        logging.info("%s handmade recall: %f" % (os.path.basename(file), recall))
+        for name, scorer_fn in scorers.items():
+            logging.info("%s handmade %s: %f" % (os.path.basename(file), name, scorer_fn(labels, y_hat)))
 
 
 if __name__ == '__main__':

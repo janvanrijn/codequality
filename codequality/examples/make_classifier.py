@@ -60,7 +60,7 @@ def run(args):
     # precision / recall for binary targets
     scorers = {
         'accuracy': (sklearn.metrics.accuracy_score, {}),
-        'precision': (sklearn.metrics.precision_score, {zero_division: 0.0}), 
+        'precision': (sklearn.metrics.precision_score, {'zero_division': 0.0}), 
         'recall': (sklearn.metrics.recall_score, {})
     }
     scorers_sklearn = {

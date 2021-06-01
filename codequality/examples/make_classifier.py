@@ -96,7 +96,7 @@ def run(args):
             raise ValueError('not recognized file: %s' % file)
         y_hat = handmade.predict(frame)
         for name, scorer_fn in scorers.items():
-            logging.info("%s handmade %s: %f" % (os.path.basename(file), name, scorer_fn(labels, y_hat)))
+            logging.info("%s handmade %s: %f" % (os.path.basename(file), name, scorer_fn(y_true=labels, y_pred=y_hat)))
 
 
 if __name__ == '__main__':

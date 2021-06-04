@@ -1,5 +1,6 @@
 import argparse
 import glob
+import json
 import logging
 import os
 import pandas as pd
@@ -19,9 +20,6 @@ def parse_args():
 
 
 def run(args):
-    files = os.listdir(args.matrices_understand_dir)
-    if args.max_projects:
-        files = files[:args.max_projects]
     os.makedirs(args.output_dir, exist_ok=True)
 
     all_code_smells_frame = pd.read_csv(args.code_smells_path)
@@ -60,6 +58,8 @@ def run(args):
 
     list_projects_frames = []
     for idx, project_repo in enumerate(included_projects):
+        if args.max_projects is not None and idx > args.max_projects:
+            break
         logging.info("processing project: %s (%d/%d)" % (project_repo, idx+1, len(included_projects)))
         project_code_smells = all_code_smells_frame[all_code_smells_frame['repository'] == project_repo]
         commit_hash = project_code_smells['CommitHash'].iloc[0]
@@ -150,16 +150,21 @@ def run(args):
         # TODO: remove from dataset. Throw error if record count still doesn't match
         logging.warning('missing commit hashes: %s' % str(commit_hashes_with_mlcq - commit_hashes_understand))
 
-    output_file = os.path.join(args.output_dir, "%s.csv" % args.smell_type)
+    output_file_csv = os.path.join(args.output_dir, "%s.csv" % args.smell_type)
+    output_file_ignored = os.path.join(args.output_dir, "%s_ignored.json" % args.smell_type)
+    output_file_included = os.path.join(args.output_dir, "%s_included.json" % args.smell_type)
     all_projects_frame = list_projects_frames[0].append(list_projects_frames[1:])
-    all_projects_frame.to_csv(output_file)
+    all_projects_frame.to_csv(output_file_csv)
+    with open(output_file_included, 'w') as fp:
+        json.dump(list(included_projects), fp)
+    with open(output_file_ignored, 'w') as fp:
+        ignore_total_set = set(missing_pmd)
+        ignore_total_set.update(missing_pmd)
+        json.dump(list(ignore_total_set), fp)
     logging.info(all_projects_frame['severity'].value_counts())
-    logging.info('missing pmd files: %s' % missing_pmd)
-    logging.info('missing understand files: %s' % missing_understand)
-    logging.info('used projects: %s' % used_projects)
     logging.info("data frame len %d" % len(all_projects_frame['severity']))
     logging.info("original frame len %d, pmd duplicates: %d" % (original_frame_len, pmd_duplicate_rows))
-    logging.info("saved output file to: %s" % output_file)
+    logging.info("saved output file to: %s" % output_file_csv)
 
 
 if __name__ == '__main__':

@@ -25,6 +25,9 @@ def parse_args():
 
 
 def get_data_and_labels(frame: pd.DataFrame, severity_threshold: int):
+    frame_prime = frame.groupby(['CommitHash', 'Name']).mean()
+    logging.info("Size after grouping: (%d, %d)" % frame_prime.shape)
+
     y = frame['severity'].apply(lambda value: True if value > severity_threshold else False).to_numpy(dtype=bool)
     logging.info("Dtypes:\n" + str(frame.dtypes))
     logging.info("Values Count:\n" + str(frame['smell'].value_counts()))
@@ -33,6 +36,7 @@ def get_data_and_labels(frame: pd.DataFrame, severity_threshold: int):
         'CommitHash',
         'Name',
         'File',
+        'repository',
         'smell'
     ], axis=1)
     unique, counts = np.unique(y, return_counts=True)
@@ -79,6 +83,7 @@ def run(args):
         if os.path.splitext(file)[-1] != '.csv':
             logging.info("skipping file: %s (extension %s)" % (file, file_extension))
             continue
+        logging.info("======= %s =======" % filename)
 
         file = os.path.join(args.input_dir, file)
         frame = pd.read_csv(file)

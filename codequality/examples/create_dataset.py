@@ -1,4 +1,5 @@
 import argparse
+import glob
 import logging
 import os
 import pandas as pd
@@ -10,6 +11,7 @@ def parse_args():
     parser.add_argument('--matrices_pmd_dir', type=str, default=os.path.expanduser('~/data/codequality/PMD_matrices_processed'))
     parser.add_argument('--output_dir', type=str, default=os.path.expanduser('~/experiments/code_smells/'))
     parser.add_argument('--code_smells_path', type=str, default=os.path.expanduser('../data/code_smells.csv'))
+    parser.add_argument('--included_projects', type=str, default=os.path.expanduser('../data/included_projects.csv'))
     parser.add_argument('--max_projects', type=int, default=None)
     parser.add_argument('--smell_type', type=str, default='data class')
 
@@ -40,40 +42,56 @@ def run(args):
     all_code_smells_frame['severity'] = all_code_smells_frame['severity'].apply(rewrite_strategy)
     all_code_smells_frame['CommitHash'] = all_code_smells_frame['commit_hash']
     all_code_smells_frame['Name'] = all_code_smells_frame['code_name']
-    all_code_smells_frame = all_code_smells_frame[['CommitHash', 'Name', 'smell', 'severity']]
-    all_code_smells_frame = all_code_smells_frame.groupby(['CommitHash', 'Name', 'smell']).mean()
+    all_code_smells_frame = all_code_smells_frame[['CommitHash', 'repository', 'Name', 'smell', 'severity']]
+    all_code_smells_frame = all_code_smells_frame.groupby(['CommitHash', 'repository', 'Name', 'smell']).mean()
     all_code_smells_frame = all_code_smells_frame.reset_index()
     logging.info("Number of records: %d" % len(all_code_smells_frame))
     original_frame_len = len(all_code_smells_frame)
     pmd_duplicate_rows = 0
 
+    included_projects = pd.read_csv(args.included_projects)
+    included_projects = included_projects['repository']
+
     commit_hashes_with_mlcq = set(all_code_smells_frame['CommitHash'])
     commit_hashes_understand = set()
+    missing_understand = set()
+    missing_pmd = set()
+    used_projects = set()
 
     list_projects_frames = []
-    for idx, file in enumerate(files):
-        file_extension = os.path.splitext(file)[-1]
-        if os.path.splitext(file)[-1] != '.csv':
-            logging.info("skipping file: %s (extension %s)" % (file, file_extension))
-            continue
-        logging.info("opening file: %s (%d/%d)" % (file, idx+1, len(files)))
-        file_prefix = os.path.splitext(file)[0]
-        file_splitted = file_prefix.split('-')
-        commit_hashes_understand.add(file_splitted[-1])
-
-        project_code_smells = all_code_smells_frame[all_code_smells_frame['CommitHash'] == file_splitted[-1]]
+    for idx, project_repo in enumerate(included_projects):
+        logging.info("processing project: %s (%d/%d)" % (project_repo, idx+1, len(included_projects)))
+        project_code_smells = all_code_smells_frame[all_code_smells_frame['repository'] == project_repo]
+        commit_hash = project_code_smells['CommitHash'].iloc[0]
         project_code_smells = project_code_smells.set_index(['CommitHash', 'Name'])
-
+        commit_hashes_understand.add(commit_hash)
         logging.info("code smells: %d" % len(project_code_smells))
 
-        project_frame = pd.read_csv(os.path.join(args.matrices_understand_dir, file))
+        missing = False
+        understand_filenames = glob.glob(args.matrices_understand_dir + '/*' + commit_hash + '.csv')
+        if len(understand_filenames) == 0:
+            missing = True
+            missing_understand.add(project_repo)
+            logging.warning('Could not find understand matrix for %s' % project_repo)
+        pmd_filenames = glob.glob(args.matrices_pmd_dir + '/*' + commit_hash + '.csv')
+        if len(pmd_filenames) == 0:
+            missing = True
+            missing_pmd.add(project_repo)
+            logging.warning('Could not find pmd matrix for %s' % project_repo)
+        if missing:
+            continue
+        used_projects.add(project_repo)
+
+        project_frame = pd.read_csv(understand_filenames[0])
         project_frame = project_frame.drop('Kind', axis=1)
         # project_frame['Project'] = '-'.join(file_splitted)
         # commit hash is actually overkill..
-        project_frame['CommitHash'] = file_splitted[-1]
+        project_frame['CommitHash'] = commit_hash
+        project_frame['repository'] = project_repo
         project_frame = project_frame.set_index([
             'CommitHash',
             'Name',
+            'repository',
             # 'Project',
         ])
         # removes duplicates. TODO: why are there duplicates? Ask Cat (see, e.g., guava)
@@ -88,19 +106,20 @@ def run(args):
         # inner join means: only keep records that occur in both datasets
         project_frame = project_frame.join(project_code_smells, how='right')
         if project_frame.shape[0] > len(project_code_smells):
-            raise ValueError('File %s Too much rows: %d vs %d' % (file, project_frame.shape[0], len(project_code_smells)))
+            raise ValueError('File %s Too much rows: %d vs %d' % (project_repo, project_frame.shape[0], len(project_code_smells)))
         if project_frame.shape[0] < len(project_code_smells):
-            raise ValueError('File %s: Expected %d rows after merge with understand, got only %d' % (file, len(project_code_smells), project_frame.shape[0], ))
-        if project_frame.shape[1] - dimensions_old[1] != 2:
-            raise ValueError('File %s does not contain a plausible new column count' % file)
+            raise ValueError('File %s: Expected %d rows after merge with understand, got only %d' % (project_repo, len(project_code_smells), project_frame.shape[0], ))
+        if project_frame.shape[1] - dimensions_old[1] != 3:
+            raise ValueError('File %s does not contain a plausible new column count' % project_repo)
 
-        pmd_metrics_filename = os.path.join(args.matrices_pmd_dir, file)
-        pmd_metrics = pd.read_csv(pmd_metrics_filename)
+        pmd_metrics = pd.read_csv(pmd_filenames[0])
         # prevent mix-up with scientific notation
         pmd_metrics['CommitHash'] = pmd_metrics['CommitHash'].astype(str)
+        pmd_metrics['repository'] = project_repo
         pmd_metrics = pmd_metrics.set_index([
             'CommitHash',
-            'Name'
+            'Name',
+            'repository'
         ])
         pmd_metrics = pmd_metrics.astype(dtype=float)
 
@@ -109,10 +128,11 @@ def run(args):
         project_frame = project_frame.join(pmd_metrics, how='left')
 
         if len(project_frame) < dimensions_old[0]:
-            raise ValueError('File %s: Expected at least %d rows after merge with PMD, got only %d' % (file, dimensions_old[0], project_frame.shape[0]))
+            raise ValueError('File %s: Expected at least %d rows after merge with PMD, got only %d' % (project_repo, dimensions_old[0], project_frame.shape[0]))
         elif len(project_frame) > dimensions_old[0]:
             pmd_duplicate_rows += len(project_frame) - dimensions_old[0]
-            logging.warning('File %s: Expected at most %d rows after merge with PMD, got %d' % (file, dimensions_old[0], project_frame.shape[0]))
+            logging.warning('File %s: Expected at most %d rows after merge with PMD, got %d' % (project_repo, dimensions_old[0], project_frame.shape[0]))
+            # This happens when there are multiple classes per file
 
         # finally add to the list
         list_projects_frames.append(project_frame)
@@ -124,7 +144,7 @@ def run(args):
             additional = new - orig
 
             # happens.
-            logging.warning('Column set does not match for %s. Missing: %s, Additional: %s' % (file, missing, additional))
+            logging.warning('Column set does not match for %s. Missing: %s, Additional: %s' % (project_repo, missing, additional))
 
     if len(commit_hashes_with_mlcq - commit_hashes_understand) > 0:
         # TODO: remove from dataset. Throw error if record count still doesn't match
@@ -134,6 +154,9 @@ def run(args):
     all_projects_frame = list_projects_frames[0].append(list_projects_frames[1:])
     all_projects_frame.to_csv(output_file)
     logging.info(all_projects_frame['severity'].value_counts())
+    logging.info('missing pmd files: %s' % missing_pmd)
+    logging.info('missing understand files: %s' % missing_understand)
+    logging.info('used projects: %s' % used_projects)
     logging.info("data frame len %d" % len(all_projects_frame['severity']))
     logging.info("original frame len %d, pmd duplicates: %d" % (original_frame_len, pmd_duplicate_rows))
     logging.info("saved output file to: %s" % output_file)

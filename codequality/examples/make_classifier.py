@@ -88,6 +88,7 @@ def run(args):
         file = os.path.join(args.input_dir, file)
         frame = pd.read_csv(file)
         data, labels = get_data_and_labels(frame, args.severity_threshold)
+        frame['label'] = labels
 
         for clf in clfs:
             all_results = evaluate(data, labels, clf, scorers_sklearn)
@@ -102,9 +103,13 @@ def run(args):
             handmade = codequality.pmd_models.BlobModel()
         else:
             raise ValueError('not recognized file: %s' % file)
-        y_hat = handmade.predict(frame)
+
+        frame['predicted_handmade'] = handmade.predict(frame)
+        frame_prime = frame[['File', 'Name', 'label', 'predicted_handmade']].groupby(['File', 'Name']).agg(['or'])
+        logging.info('Frame size: (%s,%s)' % frame_prime.shape)
         for scorer_name, (scorer_fn, kwargs) in scorers.items():
-            logging.info("%s handmade %s: %f" % (os.path.basename(file), scorer_name, scorer_fn(labels, y_hat, **kwargs)))
+            performance = scorer_fn(frame_prime['label'], frame_prime['predicted_handmade'], **kwargs)
+            logging.info("%s handmade %s: %f" % (os.path.basename(file), scorer_name, performance))
 
 
 if __name__ == '__main__':

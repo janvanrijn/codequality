@@ -27,18 +27,20 @@ def run(args):
     for idx, row in df1.iterrows():
         if row['label'] != row['is_positive']:
             raise ValueError()
-        if row['y_hat'] == True and row['is_positive'] == False:
+        if row['y_hat'] == True and row['pmd_code_smell'] == False:
             disagree_1.add(idx)
-        elif row['y_hat'] == False and row['is_positive'] == True:
+        elif row['y_hat'] == False and row['pmd_code_smell'] == True:
             disagree_2.add(idx)
     print(len(disagree_1), len(disagree_2))
 
     df_orig = pd.read_csv(args.data_orig).set_index(['Name', 'repository'])
-    for key in disagree_1:
+    for key in disagree_2:
         subframe = df_orig.loc[key]
-        print(subframe['WMC'])
-        print(subframe['TCC'])
-        print(subframe['ATFD'])
+        subframe = subframe[['WMC', 'TCC', 'ATFD']]
+        print(subframe.index)
+        print(subframe[['WMC', 'TCC']])
+        print(subframe[['ATFD']])
+        print(subframe.isnull().values.any())
 
 
 if __name__ == '__main__':

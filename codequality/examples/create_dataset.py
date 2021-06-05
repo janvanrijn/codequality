@@ -104,7 +104,7 @@ def run(args):
         dimensions_old = project_frame.shape
         # the following line determines how to handle the records.
         # inner join means: only keep records that occur in both datasets
-        project_frame = project_frame.join(project_code_smells, how='right')
+        project_frame = project_frame.join(project_code_smells, how='inner')
         if project_frame.shape[0] > len(project_code_smells):
             raise ValueError('File %s Too much rows: %d vs %d' % (project_repo, project_frame.shape[0], len(project_code_smells)))
         if project_frame.shape[0] < len(project_code_smells):
@@ -123,7 +123,7 @@ def run(args):
 
         # TODO: prevent duplicates
         dimensions_old = project_frame.shape
-        project_frame = project_frame.join(pmd_metrics, how='left')
+        project_frame = project_frame.join(pmd_metrics, how='inner')
 
         if len(project_frame) < dimensions_old[0]:
             raise ValueError('File %s: Expected at least %d rows after merge with PMD, got only %d' % (project_repo, dimensions_old[0], project_frame.shape[0]))

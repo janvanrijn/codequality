@@ -3,6 +3,7 @@ import logging
 import numpy as np
 import os
 import pandas as pd
+import typing
 
 import codequality.pmd_models
 
@@ -18,6 +19,7 @@ import sklearn.tree
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_dir', type=str, default=os.path.expanduser('~/experiments/code_smells/'))
+    parser.add_argument('--output_dir', type=str, default=os.path.expanduser('~/experiments/generated/lu'))
     parser.add_argument('--severity_threshold', type=float, default=0.75)
 
     return parser.parse_args()
@@ -41,7 +43,7 @@ def get_data_and_labels(frame: pd.DataFrame, severity_threshold: int):
     return frame.to_numpy(dtype=float), y
 
 
-def evaluate_predictions(frame: pd.DataFrame, y_hat: np.array):
+def evaluate_predictions(frame: pd.DataFrame, y_hat: np.array, filename: typing.Optional[str]):
     scorers = {
         'accuracy': (sklearn.metrics.accuracy_score, {}),
         'precision': (sklearn.metrics.precision_score, {'zero_division': 0.0}),
@@ -52,6 +54,8 @@ def evaluate_predictions(frame: pd.DataFrame, y_hat: np.array):
 
     # Very important. Note that ['Name', 'CommitHash', 'repository'] are the keys from the create dataset script
     frame = frame[['Name', 'CommitHash', 'repository', 'label', 'y_hat']].groupby(['Name', 'CommitHash', 'repository']).agg([np.any])
+    if filename is not None:
+        frame.reset_index().to_csv(filename)
     logging.info('Frame size after aggregate: (%s,%s)' % frame.shape)
     logging.info("Values Count:\n" + str(frame['label'].value_counts()))
     for scorer_name, (scorer_fn, kwargs) in scorers.items():
@@ -61,6 +65,7 @@ def evaluate_predictions(frame: pd.DataFrame, y_hat: np.array):
 
 def run(args):
     files = os.listdir(args.input_dir)
+    os.makedirs(args.output_dir, exist_ok=True)
     random_seed = 0
 
     clfs = [
@@ -90,7 +95,7 @@ def run(args):
             )
             y_hat = sklearn.model_selection.cross_val_predict(classifier, data, labels, cv=10)
             logging.info('=== %s classifier ===' % clf)
-            evaluate_predictions(frame, y_hat)
+            evaluate_predictions(frame, y_hat, None)
 
         if filename == 'data class.csv':
             handmade = codequality.pmd_models.DataClassModel()
@@ -100,7 +105,7 @@ def run(args):
             raise ValueError('not recognized file: %s' % file)
         logging.info('=== pmd classifier ===')
         y_hat = handmade.predict(frame)
-        evaluate_predictions(frame, y_hat)
+        evaluate_predictions(frame, y_hat, os.path.join(args.output_dir, 'pmd_%s' % filename))  # filename includes ext
 
 
 if __name__ == '__main__':

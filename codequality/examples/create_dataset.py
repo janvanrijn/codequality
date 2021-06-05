@@ -63,7 +63,7 @@ def run(args):
         logging.info("processing project: %s (%d/%d)" % (project_repo, idx+1, len(included_projects)))
         project_code_smells = all_code_smells_frame[all_code_smells_frame['repository'] == project_repo]
         commit_hash = project_code_smells['CommitHash'].iloc[0]
-        project_code_smells = project_code_smells.set_index(['CommitHash', 'Name'])
+        project_code_smells = project_code_smells.set_index(['CommitHash', 'Name', 'repository'])
         commit_hashes_understand.add(commit_hash)
         logging.info("code smells: %d" % len(project_code_smells))
 
@@ -109,7 +109,7 @@ def run(args):
             raise ValueError('File %s Too much rows: %d vs %d' % (project_repo, project_frame.shape[0], len(project_code_smells)))
         if project_frame.shape[0] < len(project_code_smells):
             raise ValueError('File %s: Expected %d rows after merge with understand, got only %d' % (project_repo, len(project_code_smells), project_frame.shape[0], ))
-        if project_frame.shape[1] - dimensions_old[1] != 3:
+        if project_frame.shape[1] - dimensions_old[1] != 2:
             raise ValueError('File %s does not contain a plausible new column count' % project_repo)
 
         pmd_metrics = pd.read_csv(pmd_filenames[0])

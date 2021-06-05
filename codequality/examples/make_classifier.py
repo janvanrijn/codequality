@@ -25,9 +25,6 @@ def parse_args():
 
 
 def get_data_and_labels(frame: pd.DataFrame, severity_threshold: int):
-    frame_prime = frame.groupby(['CommitHash', 'Name']).mean()
-    logging.info("Size after grouping: (%d, %d)" % frame_prime.shape)
-
     y = frame['severity'].apply(lambda value: True if value > severity_threshold else False).to_numpy(dtype=bool)
     logging.info("Dtypes:\n" + str(frame.dtypes))
     logging.info("Values Count:\n" + str(frame['smell'].value_counts()))
@@ -44,32 +41,26 @@ def get_data_and_labels(frame: pd.DataFrame, severity_threshold: int):
     return frame.to_numpy(dtype=float), y
 
 
-def evaluate(data: np.array, labels: np.array, clf: sklearn.base.BaseEstimator,
-             scorers: typing.List[str]):
-    # TODO: evaluate according to: leave one project out
-    # TODO: or on file level predictions
-    classifier = sklearn.pipeline.make_pipeline(
-        sklearn.impute.SimpleImputer(strategy='constant', fill_value=-1.0),
-        sklearn.feature_selection.VarianceThreshold(),
-        clf
-    )
-    result = sklearn.model_selection.cross_validate(
-        classifier, data, labels, scoring=scorers, cv=10)
-    return result
+def evaluate_predictions(frame: pd.DataFrame, y_hat: np.array):
+    scorers = {
+        'accuracy': (sklearn.metrics.accuracy_score, {}),
+        'precision': (sklearn.metrics.precision_score, {'zero_division': 0.0}),
+        'recall': (sklearn.metrics.recall_score, {}),
+        'confusion_matrix': (sklearn.metrics.confusion_matrix, {})
+    }
+    frame['y_hat'] = y_hat
+
+    # TODO: why do we group by name? Should be file, right? (Ask Cat)
+    frame = frame[['Name', 'CommitHash', 'label', 'y_hat']].groupby(['Name', 'CommitHash']).agg([np.any])
+    logging.info('Frame size after aggregate: (%s,%s)' % frame.shape)
+    for scorer_name, (scorer_fn, kwargs) in scorers.items():
+        performance = scorer_fn(frame['label'], frame['y_hat'], **kwargs)
+        logging.info("%s: %s" % (scorer_name, str(performance)))
 
 
 def run(args):
     files = os.listdir(args.input_dir)
     random_seed = 0
-    # precision / recall for binary targets
-    scorers = {
-        'accuracy': (sklearn.metrics.accuracy_score, {}),
-        'precision': (sklearn.metrics.precision_score, {'zero_division': 0.0}), 
-        'recall': (sklearn.metrics.recall_score, {})
-    }
-    scorers_sklearn = {
-        k: sklearn.metrics.make_scorer(v[0], **v[1]) for k, v in scorers.items()
-    }
 
     clfs = [
         sklearn.dummy.DummyClassifier(random_state=random_seed),
@@ -91,25 +82,24 @@ def run(args):
         frame['label'] = labels
 
         for clf in clfs:
-            all_results = evaluate(data, labels, clf, scorers_sklearn)
-            for scorer_name in scorers:
-                result = all_results["test_%s" % scorer_name]
-                logging.info("%s %s %s: %f +/- %f" % (
-                    os.path.basename(file), str(clf), scorer_name,
-                    float(np.mean(result)), float(np.std(result))))
+            classifier = sklearn.pipeline.make_pipeline(
+                sklearn.impute.SimpleImputer(strategy='constant', fill_value=-1.0),
+                sklearn.feature_selection.VarianceThreshold(),
+                clf
+            )
+            y_hat = sklearn.model_selection.cross_val_predict(classifier, data, labels, cv=10)
+            logging.info('=== %s classifier ===' % clf)
+            evaluate_predictions(frame, y_hat)
+
         if filename == 'data class.csv':
             handmade = codequality.pmd_models.DataClassModel()
         elif filename == 'blob.csv':
             handmade = codequality.pmd_models.BlobModel()
         else:
             raise ValueError('not recognized file: %s' % file)
-
-        frame['predicted_handmade'] = handmade.predict(frame)
-        frame_prime = frame[['File', 'Name', 'label', 'predicted_handmade']].groupby(['File', 'Name']).agg(['or'])
-        logging.info('Frame size: (%s,%s)' % frame_prime.shape)
-        for scorer_name, (scorer_fn, kwargs) in scorers.items():
-            performance = scorer_fn(frame_prime['label'], frame_prime['predicted_handmade'], **kwargs)
-            logging.info("%s handmade %s: %f" % (os.path.basename(file), scorer_name, performance))
+        logging.info('=== pmd classifier ===')
+        y_hat = handmade.predict(frame)
+        evaluate_predictions(frame, y_hat)
 
 
 if __name__ == '__main__':

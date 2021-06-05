@@ -113,8 +113,6 @@ def run(args):
             raise ValueError('File %s does not contain a plausible new column count' % project_repo)
 
         pmd_metrics = pd.read_csv(pmd_filenames[0])
-        # prevent mix-up with scientific notation
-        pmd_metrics['CommitHash'] = pmd_metrics['CommitHash'].astype(str)
         pmd_metrics['repository'] = project_repo
         pmd_metrics = pmd_metrics.set_index([
             'CommitHash',

@@ -3,7 +3,6 @@ import logging
 import numpy as np
 import os
 import pandas as pd
-import typing
 
 import codequality.pmd_models
 
@@ -25,7 +24,8 @@ def parse_args():
 
 
 def get_data_and_labels(frame: pd.DataFrame, severity_threshold: int):
-    y = frame['severity'].apply(lambda value: True if value > severity_threshold else False).to_numpy(dtype=bool)
+    # Note that >= is important detail
+    y = frame['severity'].apply(lambda value: True if value >= severity_threshold else False).to_numpy(dtype=bool)
     logging.info("Dtypes:\n" + str(frame.dtypes))
     logging.info("Values Count:\n" + str(frame['smell'].value_counts()))
     frame = frame.drop([
@@ -50,9 +50,10 @@ def evaluate_predictions(frame: pd.DataFrame, y_hat: np.array):
     }
     frame['y_hat'] = y_hat
 
-    # TODO: why do we group by name? Should be file, right? (Ask Cat)
-    frame = frame[['Name', 'CommitHash', 'label', 'y_hat']].groupby(['Name', 'CommitHash']).agg([np.any])
+    # Very important. Note that ['Name', 'CommitHash', 'repository'] are the keys from the create dataset script
+    frame = frame[['Name', 'CommitHash', 'repository', 'label', 'y_hat']].groupby(['Name', 'CommitHash', 'repository']).agg([np.any])
     logging.info('Frame size after aggregate: (%s,%s)' % frame.shape)
+    logging.info("Values Count:\n" + str(frame['label'].value_counts()))
     for scorer_name, (scorer_fn, kwargs) in scorers.items():
         performance = scorer_fn(frame['label'], frame['y_hat'], **kwargs)
         logging.info("%s: %s" % (scorer_name, str(performance)))

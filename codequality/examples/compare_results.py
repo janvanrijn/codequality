@@ -19,14 +19,14 @@ def run(args):
     df2['Name'] = df2['code_name']
     df2 = df2.set_index(['Name', 'repository']).drop(['code_name', 'path'], axis=1)
     if len(df1) != len(df2):
-        raise ValueError()
+        raise ValueError('Diff in size %s vs %s' % (len(df1), len(df2)))
     df1 = df1.join(df2, how='left')
 
     disagree_1 = set()  # lu says pos, kky says false
     disagree_2 = set()
     for idx, row in df1.iterrows():
         if row['label'] != row['is_positive']:
-            raise ValueError()
+            raise ValueError('Error in row: does not agree on label')
         if row['y_hat'] == True and row['pmd_code_smell'] == False:
             disagree_1.add(idx)
         elif row['y_hat'] == False and row['pmd_code_smell'] == True:

@@ -37,10 +37,13 @@ def run(args):
     for key in disagree_2:
         subframe = df_orig.loc[key]
         subframe = subframe[['WMC', 'TCC', 'ATFD']]
-        print(subframe.index)
-        print(subframe[['WMC', 'TCC']])
-        print(subframe[['ATFD']])
-        print(subframe.isnull().values.any())
+        if not subframe.isnull().values.any():
+            print(subframe.index)
+            print(subframe[['WMC', 'TCC']])
+            print(subframe[['ATFD']])
+            print(subframe.isnull().values.any())
+        else:
+            pass
 
 
 if __name__ == '__main__':

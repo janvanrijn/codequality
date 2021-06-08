@@ -6,7 +6,8 @@ class BlobModel(object):
 
     @staticmethod
     def predict_row(row: pd.Series) -> bool:
-        if row['WMC'] >= 47 and row['TCC'] < (1.0 / 3.0) and row['ATFD'] > 5:
+        TCC_THRESHOLD = (100.0 / 3.0)  # Note discrepancy between PMD code and percentages
+        if row['WMC'] >= 47 and row['TCC'] < TCC_THRESHOLD and row['ATFD'] > 5:
             return True
         else:
             return False

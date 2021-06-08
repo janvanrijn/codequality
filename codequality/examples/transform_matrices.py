@@ -35,6 +35,9 @@ def run(args):
         project_frame = pd.read_csv(os.path.join(args.matrices_dir, file))
         for _, row in project_frame.iterrows():
             basename = os.path.basename(row['File'])
+            main_class_name = os.path.splitext(basename)[0]
+            # obtains the classname of the class that has code smell
+            smell_class_name = row['Description'][len('Java matrics of class '):].split(' ')[0]
             # obtains all text between brackets
             metrics_unparsed = re.search(r'\((.*?)\)', row['Description']).group(1)
             # removes procent signs and illegal numbers
@@ -48,7 +51,9 @@ def run(args):
                     logging.warning('file %s contains numbers with comma in it: %s. Will be replaced.' % (file, item))
                     record[key] = item.replace(',', '')
             record['CommitHash'] = commitHash
-            record['Name'] = "%s.%s" % (row['Package'], os.path.splitext(basename)[0])
+            record['Name'] = "%s.%s" % (row['Package'], main_class_name)
+            if main_class_name != smell_class_name:
+                record['Name'] = "%s.%s.%s" % (row['Package'], main_class_name, smell_class_name)
             all_data.append(record)
         if len(all_data) == 0:
             logging.warning('Project %s (%s) does not contain any matrices' % (project_name, commitHash))

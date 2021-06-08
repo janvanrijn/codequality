@@ -82,35 +82,38 @@ def run(args):
             continue
         used_projects.add(project_repo)
 
-        project_frame = pd.read_csv(understand_filenames[0])
-        project_frame = project_frame.drop('Kind', axis=1)
+        understand_frame = pd.read_csv(understand_filenames[0])
+        understand_frame = understand_frame.drop('Kind', axis=1)
         # project_frame['Project'] = '-'.join(file_splitted)
         # commit hash is actually overkill..
-        project_frame['CommitHash'] = commit_hash
-        project_frame['repository'] = project_repo
-        project_frame = project_frame.set_index([
+        understand_frame['CommitHash'] = commit_hash
+        understand_frame['repository'] = project_repo
+        understand_frame = understand_frame.set_index([
             'CommitHash',
             'Name',
             'repository',
             # 'Project',
         ])
         # removes duplicates. TODO: why are there duplicates? Ask Cat (see, e.g., guava)
-        project_frame = project_frame[~project_frame.index.duplicated(keep='first')]
+        understand_frame = understand_frame[~understand_frame.index.duplicated(keep='first')]
 
-        for column_name in project_frame.columns:
+        for column_name in understand_frame.columns:
             if column_name != 'File':
-                project_frame[column_name] = project_frame[column_name].astype(dtype=float)
+                understand_frame[column_name] = understand_frame[column_name].astype(dtype=float)
 
-        dimensions_old = project_frame.shape
+        dimensions_old = project_code_smells.shape
         # the following line determines how to handle the records.
         # inner join means: only keep records that occur in both datasets
-        project_frame = project_frame.join(project_code_smells, how='right')
-        if project_frame.shape[0] > len(project_code_smells):
-            raise ValueError('File %s Too much rows: %d vs %d' % (project_repo, project_frame.shape[0], len(project_code_smells)))
-        if project_frame.shape[0] < len(project_code_smells):
-            raise ValueError('File %s: Expected %d rows after merge with understand, got only %d' % (project_repo, len(project_code_smells), project_frame.shape[0], ))
-        if project_frame.shape[1] - dimensions_old[1] != 2:
-            raise ValueError('File %s does not contain a plausible new column count' % project_repo)
+        joined_frame = project_code_smells.join(understand_frame, how='left')
+        if joined_frame.shape[0] > dimensions_old[0]:
+            raise ValueError('File %s Too much rows: %d vs %d' % (project_repo, joined_frame.shape[0], dimensions_old[0]))
+        if joined_frame.shape[0] < dimensions_old[0]:
+            print(project_repo)
+            print(project_code_smells.index[0])
+            print(joined_frame)
+            raise ValueError('File %s: Expected %d rows after merge with understand, got only %d' % (project_repo, dimensions_old[0], len(joined_frame)))
+        if joined_frame.shape[1] - understand_frame.shape[1] != 2:
+            raise ValueError('File %s does not contain a plausible new column count. Old count %d, new count %d' % (project_repo, dimensions_old[1], joined_frame.shape[1], ))
 
         pmd_metrics = pd.read_csv(pmd_filenames[0])
         pmd_metrics['repository'] = project_repo
@@ -122,20 +125,30 @@ def run(args):
         pmd_metrics = pmd_metrics.astype(dtype=float)
 
         # TODO: prevent duplicates
-        dimensions_old = project_frame.shape
-        project_frame = project_frame.join(pmd_metrics, how='left')
+        dimensions_old = joined_frame.shape
+        all_joined_frame = joined_frame.join(pmd_metrics, how='left')
 
-        if len(project_frame) < dimensions_old[0]:
-            raise ValueError('File %s: Expected at least %d rows after merge with PMD, got only %d' % (project_repo, dimensions_old[0], project_frame.shape[0]))
-        elif len(project_frame) > dimensions_old[0]:
-            pmd_duplicate_rows += len(project_frame) - dimensions_old[0]
-            logging.warning('File %s: Expected at most %d rows after merge with PMD, got %d' % (project_repo, dimensions_old[0], project_frame.shape[0]))
+        if len(all_joined_frame) < dimensions_old[0]:
+            print(project_repo)
+            print(joined_frame)
+            print(all_joined_frame)
+            raise ValueError('File %s: Expected at least %d rows after merge with PMD, got only %d' % (project_repo, dimensions_old[0], all_joined_frame.shape[0]))
+        elif len(all_joined_frame) > dimensions_old[0]:
+            print(project_repo)
+            print('orig')
+            for row in joined_frame.index:
+                print(row[1])
+            print('new')
+            for row in all_joined_frame.index:
+                print(row[1])
+            pmd_duplicate_rows += len(all_joined_frame) - dimensions_old[0]
+            raise ValueError('File %s: Expected at most %d rows after merge with PMD, got %d' % (project_repo, dimensions_old[0], all_joined_frame.shape[0]))
             # This happens when there are multiple classes per file
-        if project_frame.shape[1] != dimensions_old[1] + 6:
-            raise ValueError('Before merge: %d columns, expected columns after merge: %d, actual: %d' % (dimensions_old[1], dimensions_old[1] + 6, project_frame.shape[1]))
+        if all_joined_frame.shape[1] != dimensions_old[1] + 6:
+            raise ValueError('Before merge: %d columns, expected columns after merge: %d, actual: %d' % (dimensions_old[1], dimensions_old[1] + 6, all_joined_frame.shape[1]))
 
         # finally add to the list
-        list_projects_frames.append(project_frame)
+        list_projects_frames.append(all_joined_frame)
         # some final checks
         if set(list_projects_frames[0].columns) != set(list_projects_frames[-1].columns):
             orig = set(list_projects_frames[0].columns)

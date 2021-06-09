@@ -115,7 +115,9 @@ def run(args):
         if joined_frame.shape[1] - understand_frame.shape[1] != 2:
             raise ValueError('File %s does not contain a plausible new column count. Old count %d, new count %d' % (project_repo, dimensions_old[1], joined_frame.shape[1], ))
 
-        pmd_metrics = pd.read_csv(pmd_filenames[0]).drop_duplicates()  # some files have duplicate keys due to mistake in extraction process
+        pmd_metrics = pd.read_csv(pmd_filenames[0])
+        # remove duplicates
+        pmd_metrics.drop(index=pmd_metrics[pmd_metrics.duplicated(keep=False)].isnull().any(1).index)
         pmd_metrics['repository'] = project_repo
         pmd_metrics = pmd_metrics.set_index([
             'CommitHash',

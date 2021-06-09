@@ -26,13 +26,18 @@ def run(args):
         if os.path.splitext(file)[-1] != '.csv':
             logging.info("skipping file: %s (extension %s)" % (file, file_extension))
             continue
-        logging.info("opening file: %s (%d/%d)" % (file, idx + 1, len(files)))
 
         all_data = []
         filename_base = os.path.splitext(file)[0]
         project_name = '-'.join(filename_base.split('-')[:-1])
         commitHash = filename_base.split('-')[-1]
         project_frame = pd.read_csv(os.path.join(args.matrices_dir, file))
+        dims = project_frame.shape
+        logging.info("opened file: %s, shape: %s (%d/%d)" % (file, str(dims), idx + 1, len(files)))
+        project_frame = project_frame.remove_duplicates()
+        if project_frame.shape != dims:
+            logging.info('Removed duplicates, new dimensions: (%d,%d)' % project_frame.shape)
+
         for _, row in project_frame.iterrows():
             basename = os.path.basename(row['File'])
             main_class_name = os.path.splitext(basename)[0]

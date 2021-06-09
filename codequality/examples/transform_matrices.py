@@ -35,8 +35,8 @@ def run(args):
         dims = project_frame.shape
         logging.info("opened file: %s, shape: %s (%d/%d)" % (file, str(dims), idx + 1, len(files)))
         project_frame = project_frame.drop_duplicates()
-        if project_frame.shape != dims:
-            logging.warning('Removed duplicates, new dimensions: (%d,%d)' % project_frame.shape)
+        # if project_frame.shape != dims:
+        #     logging.warning('Removed duplicates, new dimensions: (%d,%d)' % project_frame.shape)
 
         for _, row in project_frame.iterrows():
             basename = os.path.basename(row['File'])

@@ -117,7 +117,7 @@ def run(args):
 
         pmd_metrics = pd.read_csv(pmd_filenames[0])
         # remove duplicates
-        pmd_metrics.drop(index=pmd_metrics[pmd_metrics.duplicated(keep=False)].isnull().any(1).index)
+        pmd_metrics = pmd_metrics.drop(index=pmd_metrics[pmd_metrics.duplicated(keep=False)].isnull().any(1).index)
         pmd_metrics['repository'] = project_repo
         pmd_metrics = pmd_metrics.set_index([
             'CommitHash',

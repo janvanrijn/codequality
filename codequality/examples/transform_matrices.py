@@ -34,7 +34,7 @@ def run(args):
         project_frame = pd.read_csv(os.path.join(args.matrices_dir, file))
         dims = project_frame.shape
         logging.info("opened file: %s, shape: %s (%d/%d)" % (file, str(dims), idx + 1, len(files)))
-        project_frame = project_frame.remove_duplicates()
+        project_frame = project_frame.drop_duplicates()
         if project_frame.shape != dims:
             logging.info('Removed duplicates, new dimensions: (%d,%d)' % project_frame.shape)
 

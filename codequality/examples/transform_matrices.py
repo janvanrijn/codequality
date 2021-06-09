@@ -36,7 +36,7 @@ def run(args):
         logging.info("opened file: %s, shape: %s (%d/%d)" % (file, str(dims), idx + 1, len(files)))
         project_frame = project_frame.drop_duplicates()
         if project_frame.shape != dims:
-            logging.info('Removed duplicates, new dimensions: (%d,%d)' % project_frame.shape)
+            logging.warning('Removed duplicates, new dimensions: (%d,%d)' % project_frame.shape)
 
         for _, row in project_frame.iterrows():
             basename = os.path.basename(row['File'])
@@ -53,7 +53,7 @@ def run(args):
             record = json.loads(metrics_unparsed)
             for key, item in record.items():
                 if ',' in item:
-                    logging.warning('file %s contains numbers with comma in it: %s. Will be replaced.' % (file, item))
+                    # logging.warning('file %s contains numbers with comma in it: %s. Will be replaced.' % (file, item))
                     record[key] = item.replace(',', '')
             record['CommitHash'] = commitHash
             record['Name'] = "%s.%s" % (row['Package'], main_class_name)

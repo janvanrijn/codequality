@@ -104,8 +104,8 @@ def run(args):
             raise ValueError('File %s Too much rows: %d vs %d' % (project_repo, joined_frame.shape[0], dimensions_old[0]))
         if joined_frame.shape[0] < dimensions_old[0]:
             raise ValueError('File %s: Expected %d rows after merge with understand, got only %d' % (project_repo, dimensions_old[0], len(joined_frame)))
-        if joined_frame.shape[1] - understand_frame.shape[1] != 4:
-            raise ValueError('File %s does not contain a plausible new column count. Old count %d, new count %d' % (project_repo, dimensions_old[1], joined_frame.shape[1], ))
+        if joined_frame.shape[1] - understand_frame.shape[1] != 5:
+            raise ValueError('File %s does not contain a plausible new column count. Old count smells %d, old count understand %d, new count %d' % (project_repo, dimensions_old[1], understand_frame.shape[1], joined_frame.shape[1], ))
 
         pmd_metrics = pd.read_csv(pmd_filenames[0])
         # fill nans with -999, then drop duplicated

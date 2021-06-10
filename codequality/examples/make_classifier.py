@@ -31,12 +31,7 @@ def get_data_and_labels(frame: pd.DataFrame, severity_threshold: int):
     logging.info("Dtypes:\n" + str(frame.dtypes))
     logging.info("Values Count:\n" + str(frame['smell'].value_counts()))
     frame = frame.drop([
-        'severity',
-        'CommitHash',
-        'Name',
-        'File',
-        'repository',
-        'smell'
+        'repository', 'package', 'filename', 'class_name', 'code_name', 'commit_hash', 'smell', 'severity'
     ], axis=1)
     unique, counts = np.unique(y, return_counts=True)
     logging.info("Class distribution: %s" % str(dict(zip(unique, counts))))
@@ -53,7 +48,7 @@ def evaluate_predictions(frame: pd.DataFrame, y_hat: np.array, filename: typing.
     frame['y_hat'] = y_hat
 
     # Very important. Note that ['Name', 'CommitHash', 'repository'] are the keys from the create dataset script
-    frame = frame[['Name', 'CommitHash', 'repository', 'label', 'y_hat']].groupby(['Name', 'CommitHash', 'repository']).agg([np.any])
+    frame = frame[['code_name', 'commit_hash', 'repository', 'label', 'y_hat']].groupby(['code_name', 'commit_hash', 'repository']).agg([np.any])
     if filename is not None:
         frame.reset_index().to_csv(filename)
     logging.info('Frame size after aggregate: (%s,%s)' % frame.shape)

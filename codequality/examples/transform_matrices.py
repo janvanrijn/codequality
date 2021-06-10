@@ -39,8 +39,8 @@ def run(args):
         #     logging.warning('Removed duplicates, new dimensions: (%d,%d)' % project_frame.shape)
 
         for _, row in project_frame.iterrows():
-            basename = os.path.basename(row['File'])
-            main_class_name = os.path.splitext(basename)[0]
+            filename = os.path.basename(row['File'])
+            main_class_name = os.path.splitext(filename)[0]
             # obtains the classname of the class that has code smell
             smell_class_name = row['Description'][len('Java matrics of class '):].split(' ')[0]
             # obtains all text between brackets
@@ -55,19 +55,16 @@ def run(args):
                 if ',' in item:
                     # logging.warning('file %s contains numbers with comma in it: %s. Will be replaced.' % (file, item))
                     record[key] = item.replace(',', '')
-            record['CommitHash'] = commitHash
-            record['Name'] = "%s.%s" % (row['Package'], main_class_name)
-            if main_class_name != smell_class_name:
-                record['Name'] = "%s.%s.%s" % (row['Package'], main_class_name, smell_class_name)
+            record['package'] = row['Package']
+            record['filename'] = filename
+            record['class_name'] = smell_class_name
             all_data.append(record)
         if len(all_data) == 0:
             logging.warning('Project %s (%s) does not contain any matrices' % (project_name, commitHash))
             continue
 
         result = pd.DataFrame(all_data)
-        # ensure commithas is a string, so it does not get mistaken for scientific notation
-        result['CommitHash'] = result['CommitHash'].astype(str)
-        result = result.set_index(['CommitHash', 'Name'])
+        result = result.set_index(['package', 'filename'])
         result.to_csv(os.path.join(args.output_dir, '%s-%s.csv' % (project_name, commitHash)))
 
 

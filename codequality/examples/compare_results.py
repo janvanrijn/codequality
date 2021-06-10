@@ -15,10 +15,9 @@ def parse_args():
 
 
 def run(args):
-    df1 = pd.read_csv(args.data1).set_index(['Name', 'repository']).drop('CommitHash', axis=1)
+    df1 = pd.read_csv(args.data1).set_index(['code_name', 'repository']).drop('commit_hash', axis=1)
     df2 = pd.read_csv(args.data2)
-    df2['Name'] = df2['code_name']
-    df2 = df2.set_index(['Name', 'repository']).drop(['code_name', 'path'], axis=1)
+    df2 = df2.set_index(['code_name', 'repository']).drop(['path'], axis=1)
     if len(df1) != len(df2):
         raise ValueError('Diff in size %s vs %s' % (len(df1), len(df2)))
     df1 = df1.join(df2, how='left')
@@ -34,14 +33,14 @@ def run(args):
             disagree_2.add(idx)
     print(len(disagree_1), len(disagree_2))
 
-    df_orig = pd.read_csv(args.data_orig).set_index(['Name', 'repository'])
+    df_orig = pd.read_csv(args.data_orig).set_index(['code_name', 'repository'])
     for key in disagree_2:
         subframe = df_orig.loc[key]
         subframe = subframe[['WMC', 'TCC', 'ATFD']]
-        print(key[0], key[1], 'length:', len(subframe))
+        if subframe.isnull().values.all():
+            print('missing all values:', key[0], key[1], 'length:', len(subframe))
         if args.verbosity > 0:
             print(subframe)
-        print(subframe.isnull().values.any(), subframe.isnull().values.all())
 
 
 if __name__ == '__main__':

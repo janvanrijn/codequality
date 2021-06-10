@@ -38,16 +38,23 @@ def run(args):
             raise ValueError('severity value: %s' % val)
 
     all_code_smells_frame['severity'] = all_code_smells_frame['severity'].apply(rewrite_strategy)
-    all_code_smells_frame['Name'] = all_code_smells_frame['code_name']
-    all_code_smells_frame['filename'] = all_code_smells_frame['path'].apply(lambda l: os.path.splitext(os.path.basename(l))[0])
-    all_code_smells_frame['package'] = all_code_smells_frame.apply(lambda row: row['code_name'][0:row['code_name'].rfind(row['filename']) - 1], axis=1)
-    all_code_smells_frame['class'] = all_code_smells_frame['code_name'].apply(lambda l: l.split('.')[-1])
-    all_code_smells_frame = all_code_smells_frame[['repository', 'commit_hash', 'Name', 'class', 'package', 'filename', 'smell', 'severity']]
-    all_code_smells_frame = all_code_smells_frame.groupby(['repository', 'commit_hash', 'Name', 'class', 'package', 'filename', 'smell']).mean()
+    all_code_smells_frame['filename'] = all_code_smells_frame['path'].apply(lambda l: os.path.basename(l))
+    all_code_smells_frame['package'] = all_code_smells_frame.apply(lambda row: row['code_name'][0:row['code_name'].find(os.path.splitext(row['filename'])[0]) - 1], axis=1)
+    # all_code_smells_frame['class_name'] = all_code_smells_frame['code_name'].apply(lambda l: l.split('.')[-1])
+    all_code_smells_frame = all_code_smells_frame[[
+        'repository', 'commit_hash', 'code_name',
+        # 'class_name',
+        'package', 'filename', 'smell', 'severity']]
+    all_code_smells_frame = all_code_smells_frame.groupby([
+        'repository', 'commit_hash', 'code_name',
+        # 'class_name',
+        'package', 'filename', 'smell']).mean()
     all_code_smells_frame = all_code_smells_frame.reset_index()
     logging.info("Number of records: %d" % len(all_code_smells_frame))
     original_frame_len = len(all_code_smells_frame)
     pmd_duplicate_rows = 0
+    # output_file_csv = os.path.join(args.output_dir, "smells_%s_processed.csv" % args.smell_type)
+    # all_code_smells_frame.to_csv(output_file_csv)
 
     included_projects = pd.read_csv(args.included_projects)
     included_projects = included_projects['repository']
@@ -63,7 +70,7 @@ def run(args):
         logging.info("processing project: %s (%d/%d)" % (project_repo, idx+1, len(included_projects)))
         project_code_smells = all_code_smells_frame[all_code_smells_frame['repository'] == project_repo]
         commit_hash = project_code_smells['commit_hash'].iloc[0]
-        project_code_smells = project_code_smells.set_index(['Name', 'repository'])
+        project_code_smells = project_code_smells.set_index(['code_name', 'repository'])
         logging.info("code smells: %d" % len(project_code_smells))
 
         missing = False
@@ -85,17 +92,21 @@ def run(args):
         understand_frame = understand_frame.drop('Kind', axis=1)
         # project_frame['Project'] = '-'.join(file_splitted)
         understand_frame['repository'] = project_repo
+        understand_frame['code_name'] = understand_frame['Name']
         understand_frame = understand_frame.set_index([
-            'Name',
+            'code_name',
             'repository',
             # 'Project',
         ])
-        # removes duplicates. TODO: why are there duplicates? Ask Cat (see, e.g., guava)
-        understand_frame = understand_frame[~understand_frame.index.duplicated(keep='first')]
-
+        understand_frame = understand_frame.drop('Name', axis=1)
         for column_name in understand_frame.columns:
             if column_name != 'File':
                 understand_frame[column_name] = understand_frame[column_name].astype(dtype=float)
+            else:
+                understand_frame = understand_frame.drop('File', axis=1)
+
+        # removes duplicates. TODO: why are there duplicates? Ask Cat (see, e.g., guava)
+        understand_frame = understand_frame[~understand_frame.index.duplicated(keep='first')]
 
         dimensions_old = project_code_smells.shape
         # the following line determines how to handle the records.
@@ -105,7 +116,7 @@ def run(args):
             raise ValueError('File %s Too much rows: %d vs %d' % (project_repo, joined_frame.shape[0], dimensions_old[0]))
         if joined_frame.shape[0] < dimensions_old[0]:
             raise ValueError('File %s: Expected %d rows after merge with understand, got only %d' % (project_repo, dimensions_old[0], len(joined_frame)))
-        if joined_frame.shape[1] - understand_frame.shape[1] != 6:
+        if joined_frame.shape[1] - understand_frame.shape[1] != 5:
             raise ValueError('File %s does not contain a plausible new column count. Old count smells %d, old count understand %d, new count %d' % (project_repo, dimensions_old[1], understand_frame.shape[1], joined_frame.shape[1]))
 
         pmd_metrics = pd.read_csv(pmd_filenames[0])
@@ -114,8 +125,17 @@ def run(args):
 
         pmd_metrics['repository'] = project_repo
         pmd_metrics = pmd_metrics.set_index([
-            'Name',
-            'repository'
+            'repository',
+            'package',
+            'filename',
+            # 'class_name'
+        ])
+
+        joined_frame = joined_frame.reset_index().set_index([
+            'repository',
+            'package',
+            'filename',
+            # 'class_name'
         ])
 
         # TODO: prevent duplicates

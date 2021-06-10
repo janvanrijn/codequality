@@ -108,9 +108,6 @@ def run(args):
         if joined_frame.shape[0] > dimensions_old[0]:
             raise ValueError('File %s Too much rows: %d vs %d' % (project_repo, joined_frame.shape[0], dimensions_old[0]))
         if joined_frame.shape[0] < dimensions_old[0]:
-            print(project_repo)
-            print(project_code_smells.index[0])
-            print(joined_frame)
             raise ValueError('File %s: Expected %d rows after merge with understand, got only %d' % (project_repo, dimensions_old[0], len(joined_frame)))
         if joined_frame.shape[1] - understand_frame.shape[1] != 2:
             raise ValueError('File %s does not contain a plausible new column count. Old count %d, new count %d' % (project_repo, dimensions_old[1], joined_frame.shape[1], ))
@@ -131,21 +128,11 @@ def run(args):
         all_joined_frame = joined_frame.join(pmd_metrics, how='left')
 
         if len(all_joined_frame) < dimensions_old[0]:
-            print(project_repo)
-            print(joined_frame)
-            print(all_joined_frame)
             raise ValueError('File %s: Expected at least %d rows after merge with PMD, got only %d' % (project_repo, dimensions_old[0], all_joined_frame.shape[0]))
         elif len(all_joined_frame) > dimensions_old[0]:
-            print(project_repo)
-            print('orig')
-            for idx, row in joined_frame.iterrows():
-                print(idx[1], idx, row)
-            print('new')
-            for idx, row in all_joined_frame.iterrows():
-                print(idx[1], idx, row)
             pmd_duplicate_rows += len(all_joined_frame) - dimensions_old[0]
-            raise ValueError('File %s: Expected at most %d rows after merge with PMD, got %d' % (project_repo, dimensions_old[0], all_joined_frame.shape[0]))
-            # This happens when there are multiple classes per file
+            logging.warning('File %s: Expected at most %d rows after merge with PMD, got %d' % (project_repo, dimensions_old[0], all_joined_frame.shape[0]))
+            # This happens when there are multiple PMD records per file
         if all_joined_frame.shape[1] != dimensions_old[1] + 6:
             raise ValueError('Before merge: %d columns, expected columns after merge: %d, actual: %d' % (dimensions_old[1], dimensions_old[1] + 6, all_joined_frame.shape[1]))
 

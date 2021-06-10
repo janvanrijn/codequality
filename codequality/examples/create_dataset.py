@@ -139,10 +139,10 @@ def run(args):
             print(project_repo)
             print('orig')
             for idx, row in joined_frame.iterrows():
-                print(idx[1], idx)
+                print(idx[1], idx, row)
             print('new')
             for idx, row in all_joined_frame.iterrows():
-                print(idx[1], idx)
+                print(idx[1], idx, row)
             pmd_duplicate_rows += len(all_joined_frame) - dimensions_old[0]
             raise ValueError('File %s: Expected at most %d rows after merge with PMD, got %d' % (project_repo, dimensions_old[0], all_joined_frame.shape[0]))
             # This happens when there are multiple classes per file

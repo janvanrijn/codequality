@@ -117,7 +117,7 @@ def run(args):
 
         pmd_metrics = pd.read_csv(pmd_filenames[0])
         # fill nans with -999, then drop duplicated
-        pmd_metrics = pmd_metrics.iloc[~pmd_metrics.fillna(-999).duplicated()]
+        pmd_metrics = pmd_metrics[~pmd_metrics.fillna(-999).duplicated()]
 
         pmd_metrics['repository'] = project_repo
         pmd_metrics = pmd_metrics.set_index([

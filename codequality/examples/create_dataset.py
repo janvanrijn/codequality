@@ -127,8 +127,8 @@ def run(args):
             pmd_duplicate_rows += len(all_joined_frame) - dimensions_old[0]
             logging.warning('File %s: Expected at most %d rows after merge with PMD, got %d' % (project_repo, dimensions_old[0], all_joined_frame.shape[0]))
             # This happens when there are multiple PMD records per file
-        if all_joined_frame.shape[1] != dimensions_old[1] + 6:
-            raise ValueError('Before merge: %d columns, expected columns after merge: %d, actual: %d' % (dimensions_old[1], dimensions_old[1] + 6, all_joined_frame.shape[1]))
+        if all_joined_frame.shape[1] != dimensions_old[1] + 7:
+            raise ValueError('Before merge: %d columns, expected columns after merge: %d, actual: %d' % (dimensions_old[1], dimensions_old[1] + 7, all_joined_frame.shape[1]))
 
         # finally add to the list
         list_projects_frames.append(all_joined_frame)

@@ -9,6 +9,7 @@ def parse_args():
     parser.add_argument('--data_orig', type=str, default=os.path.expanduser('~/experiments/code_smells/blob.csv'))
     parser.add_argument('--data1', type=str, default=os.path.expanduser('~/experiments/generated/lu/pmd_blob.csv'))
     parser.add_argument('--data2', type=str, default=os.path.expanduser('~/experiments/generated/kku/blob.csv'))
+    parser.add_argument('--verbosity', type=int, default=0)
 
     return parser.parse_args()
 
@@ -38,7 +39,8 @@ def run(args):
         subframe = df_orig.loc[key]
         subframe = subframe[['WMC', 'TCC', 'ATFD']]
         print(key[0], key[1])
-        print(subframe)
+        if args.verbosity > 0:
+            print(subframe)
         print(subframe.isnull().values.any(), subframe.isnull().values.all())
 
 

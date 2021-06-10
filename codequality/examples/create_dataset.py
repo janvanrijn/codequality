@@ -116,15 +116,15 @@ def run(args):
             raise ValueError('File %s does not contain a plausible new column count. Old count %d, new count %d' % (project_repo, dimensions_old[1], joined_frame.shape[1], ))
 
         pmd_metrics = pd.read_csv(pmd_filenames[0])
+        # fill nans with -999, then drop duplicated
+        pmd_metrics = pmd_metrics.iloc[~pmd_metrics.fillna(-999).duplicated()]
+
         pmd_metrics['repository'] = project_repo
         pmd_metrics = pmd_metrics.set_index([
             'CommitHash',
             'Name',
             'repository'
         ])
-        # remove duplicates (can only do on index as frame can contain Nans
-        pmd_metrics = pmd_metrics[~pmd_metrics.index.duplicated(keep='first')]
-        pmd_metrics = pmd_metrics.astype(dtype=float)
 
         # TODO: prevent duplicates
         dimensions_old = joined_frame.shape

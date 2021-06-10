@@ -32,6 +32,7 @@ def get_data_and_labels(frame: pd.DataFrame, severity_threshold: int):
     logging.info("Values Count:\n" + str(frame['smell'].value_counts()))
     frame = frame.drop([
         'severity',
+        'CommitHash',
         'Name',
         'File',
         'repository',
@@ -51,8 +52,8 @@ def evaluate_predictions(frame: pd.DataFrame, y_hat: np.array, filename: typing.
     }
     frame['y_hat'] = y_hat
 
-    # Very important. Note that ['Name', 'repository'] are the keys from the create dataset script
-    frame = frame[['Name', 'repository', 'label', 'y_hat']].groupby(['Name', 'repository']).agg([np.any])
+    # Very important. Note that ['Name', 'CommitHash', 'repository'] are the keys from the create dataset script
+    frame = frame[['Name', 'CommitHash', 'repository', 'label', 'y_hat']].groupby(['Name', 'CommitHash', 'repository']).agg([np.any])
     if filename is not None:
         frame.reset_index().to_csv(filename)
     logging.info('Frame size after aggregate: (%s,%s)' % frame.shape)

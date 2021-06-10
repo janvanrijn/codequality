@@ -41,6 +41,7 @@ def get_data_and_labels(frame: pd.DataFrame, severity_threshold: int):
 def evaluate_predictions(frame: pd.DataFrame, y_hat: np.array, filename: typing.Optional[str]) -> typing.Dict:
     scorers = {
         'accuracy': (sklearn.metrics.accuracy_score, {}),
+        'f1_score': (sklearn.metrics.f1_score, {'zero_division': 0.0}),
         'precision': (sklearn.metrics.precision_score, {'zero_division': 0.0}),
         'recall': (sklearn.metrics.recall_score, {}),
         'confusion_matrix': (sklearn.metrics.confusion_matrix, {})

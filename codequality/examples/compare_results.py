@@ -38,7 +38,7 @@ def run(args):
     for key in disagree_2:
         subframe = df_orig.loc[key]
         subframe = subframe[['WMC', 'TCC', 'ATFD']]
-        print(key[0], key[1])
+        print(key[0], key[1], 'length:', len(subframe))
         if args.verbosity > 0:
             print(subframe)
         print(subframe.isnull().values.any(), subframe.isnull().values.all())

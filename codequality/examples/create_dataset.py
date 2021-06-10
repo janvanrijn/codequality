@@ -40,9 +40,9 @@ def run(args):
     all_code_smells_frame['severity'] = all_code_smells_frame['severity'].apply(rewrite_strategy)
     all_code_smells_frame['CommitHash'] = all_code_smells_frame['commit_hash']
     all_code_smells_frame['Name'] = all_code_smells_frame['code_name']
-    all_code_smells_frame['filename_ext'] = os.path.basename(all_code_smells_frame['path'])
-    all_code_smells_frame['filename'] = os.path.splitext(all_code_smells_frame['filename_ext'])[0]
-    all_code_smells_frame['package_index'] = all_code_smells_frame['code_name'].rfind(all_code_smells_frame['filename']) - 1
+    all_code_smells_frame['filename'] = all_code_smells_frame['path'].apply(lambda l: os.path.splitext(os.path.basename(l))[0])
+    all_code_smells_frame['package_index'] = all_code_smells_frame.apply(lambda row: row['code_name'].rfind(row['filename']) - 1)
+    print(all_code_smells_frame['package_index'])
     all_code_smells_frame = all_code_smells_frame[['CommitHash', 'repository', 'Name', 'smell', 'severity']]
     all_code_smells_frame = all_code_smells_frame.groupby(['CommitHash', 'repository', 'Name', 'smell']).mean()
     all_code_smells_frame = all_code_smells_frame.reset_index()

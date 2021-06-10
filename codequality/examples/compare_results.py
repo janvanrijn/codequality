@@ -38,9 +38,9 @@ def run(args):
         subframe = df_orig.loc[key]
         subframe = subframe[['WMC', 'TCC', 'ATFD']]
         print(subframe.index)
-        print(subframe[['WMC', 'TCC']])
-        print(subframe[['ATFD']])
-        print(subframe.isnull().values.any())
+        # print(subframe[['WMC', 'TCC']])
+        # print(subframe[['ATFD']])
+        print(subframe.isnull().values.any(), subframe.isnull().values.all())
 
 
 if __name__ == '__main__':

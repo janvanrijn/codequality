@@ -41,7 +41,7 @@ def run(args):
     all_code_smells_frame['Name'] = all_code_smells_frame['code_name']
     all_code_smells_frame['filename'] = all_code_smells_frame['path'].apply(lambda l: os.path.splitext(os.path.basename(l))[0])
     all_code_smells_frame['package'] = all_code_smells_frame.apply(lambda row: row['code_name'][0:row['code_name'].rfind(row['filename']) - 1], axis=1)
-    all_code_smells_frame['class'] = all_code_smells_frame['code_name'].apply(lambda l: all_code_smells_frame['code_name'].split('.')[-1])
+    all_code_smells_frame['class'] = all_code_smells_frame['code_name'].apply(lambda l: l.split('.')[-1])
     all_code_smells_frame = all_code_smells_frame[['repository', 'commit_hash', 'Name', 'class', 'package', 'filename', 'smell', 'severity']]
     all_code_smells_frame = all_code_smells_frame.groupby(['repository', 'commit_hash', 'Name', 'class', 'package', 'filename', 'smell']).mean()
     all_code_smells_frame = all_code_smells_frame.reset_index()

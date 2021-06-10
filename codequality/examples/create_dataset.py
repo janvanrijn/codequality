@@ -106,7 +106,7 @@ def run(args):
         if joined_frame.shape[0] < dimensions_old[0]:
             raise ValueError('File %s: Expected %d rows after merge with understand, got only %d' % (project_repo, dimensions_old[0], len(joined_frame)))
         if joined_frame.shape[1] - understand_frame.shape[1] != 6:
-            raise ValueError('File %s does not contain a plausible new column count. Old count smells %d, old count understand %d, new count %d' % (project_repo, dimensions_old[1], understand_frame.shape[1], joined_frame.shape[1], ))
+            raise ValueError('File %s does not contain a plausible new column count. Old count smells %d, old count understand %d, new count %d' % (project_repo, dimensions_old[1], understand_frame.shape[1], joined_frame.shape[1]))
 
         pmd_metrics = pd.read_csv(pmd_filenames[0])
         # fill nans with -999, then drop duplicated
@@ -128,7 +128,7 @@ def run(args):
             pmd_duplicate_rows += len(all_joined_frame) - dimensions_old[0]
             logging.warning('File %s: Expected at most %d rows after merge with PMD, got %d' % (project_repo, dimensions_old[0], all_joined_frame.shape[0]))
             # This happens when there are multiple PMD records per file
-        if all_joined_frame.shape[1] != dimensions_old[1] + 8:
+        if all_joined_frame.shape[1] != dimensions_old[1] + 7:
             raise ValueError('Before merge: %d columns, expected columns after merge: %d, actual: %d' % (dimensions_old[1], dimensions_old[1] + 7, all_joined_frame.shape[1]))
 
         # finally add to the list

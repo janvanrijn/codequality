@@ -21,6 +21,7 @@ def run(args):
     df = pd.read_csv(args.input_file)
     df = df.drop(['Unnamed: 0'], axis=1)
     logging.info('Dtypes: %s' % str(df.dtypes))
+    plt.rc('font', family='serif')
 
     for smell_type in df['smell type'].unique():
         smell_name = smell_type.split('.')[0]
@@ -29,14 +30,13 @@ def run(args):
             fig1, ax1 = plt.subplots()
             ax1.set_xlabel('Severity Threshold')
             ax1.set_ylabel('Performance')
-            for classifier in results_smell['classifier'].unique():
-                classifier_name = classifier.split('(')[0]
+            for classifier in ['PMD Classifier', 'Decision Tree', 'Random Forest', 'Majority Class Classifier']:
                 results_classifier = results_smell.loc[results_smell['classifier'] == classifier].set_index([
                     'severity_threshold'])
                 x = results_classifier.index.to_numpy(dtype=float)
                 y = results_classifier[measure].to_numpy(dtype=float)
                 if np.any((y > 0)):
-                    ax1.plot(x, y, '-+', label=classifier_name)
+                    ax1.plot(x, y, '-+', label=classifier)
             ax1.legend(loc='lower right')
             filename = os.path.join(args.output_dir, '%s_%s.pdf' % (smell_name, measure))
             plt.savefig(filename)

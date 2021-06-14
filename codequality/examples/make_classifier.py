@@ -12,6 +12,7 @@ import sklearn.dummy
 import sklearn.ensemble
 import sklearn.feature_selection
 import sklearn.impute
+import sklearn.inspection
 import sklearn.pipeline
 import sklearn.tree
 
@@ -25,7 +26,8 @@ def parse_args():
     return parser.parse_args()
 
 
-def get_data_and_labels(frame: pd.DataFrame, severity_threshold: int):
+def get_data_and_labels(frame: pd.DataFrame, severity_threshold: int) \
+        -> typing.Tuple[pd.DataFrame, np.array, typing.List[str]]:
     # Note that >= is important detail
     y = frame['severity'].apply(lambda value: True if value >= severity_threshold else False).to_numpy(dtype=bool)
     logging.info("Dtypes:\n" + str(frame.dtypes))
@@ -35,7 +37,7 @@ def get_data_and_labels(frame: pd.DataFrame, severity_threshold: int):
     ], axis=1)
     unique, counts = np.unique(y, return_counts=True)
     logging.info("Class distribution: %s" % str(dict(zip(unique, counts))))
-    return frame.to_numpy(dtype=float), y
+    return frame.to_numpy(dtype=float), y, frame.columns.values
 
 
 def evaluate_predictions(frame: pd.DataFrame, y_hat: np.array, filename: typing.Optional[str]) -> typing.Dict:
@@ -81,6 +83,7 @@ def run(args):
     ]
 
     results = []
+    importances = []
     for idx, file in enumerate(files):
         filename = os.path.basename(file)
         file_extension = os.path.splitext(file)[-1]
@@ -93,9 +96,10 @@ def run(args):
         frame = pd.read_csv(file)
         for severity_threshold in args.severity_thresholds:
             logging.info("======= Severity Threshold: %s =======" % severity_threshold)
-            data, labels = get_data_and_labels(frame, severity_threshold)
+            data, labels, columns = get_data_and_labels(frame, severity_threshold)
             frame['label'] = labels
 
+            # generate performances
             for clf in clfs:
                 classifier = sklearn.pipeline.make_pipeline(
                     sklearn.impute.SimpleImputer(strategy='constant', fill_value=-1.0),
@@ -123,9 +127,22 @@ def run(args):
             performance['classifier'] = 'pmd classifier'
             performance['smell type'] = filename
             results.append(performance)
-    df = pd.DataFrame(results)
+
+            # feature importances
+            data = data.fillna(-1)
+            clf = sklearn.ensemble.RandomForestClassifier(n_estimators=100, random_state=0)
+            importances = sklearn.inspection.permutation_importance(clf, data, labels, n_repeats=10, random_state=0)
+            forest_importances = pd.DataFrame({'column': columns, 'importance': importances.importances_mean, 'std': importances.importances_std})
+
+            output_file_csv = os.path.join(args.output_dir, "importances_%f.csv" % severity_threshold)
+            forest_importances.to_csv(output_file_csv)
+            logging.info('stored importances to: %s' % output_file_csv)
+
+
+    df_performances = pd.DataFrame(results)
     output_file_csv = os.path.join(args.output_dir, "performances.csv")
-    df.to_csv(output_file_csv)
+    df_performances.to_csv(output_file_csv)
+    logging.info('stored performances to: %s' % output_file_csv)
 
 
 if __name__ == '__main__':

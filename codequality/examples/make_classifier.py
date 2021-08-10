@@ -77,9 +77,9 @@ def run(args):
     random_seed = 0
 
     clfs = [
-        sklearn.dummy.DummyClassifier(random_state=random_seed),
-        sklearn.tree.DecisionTreeClassifier(random_state=random_seed),
-        sklearn.ensemble.RandomForestClassifier(random_state=random_seed, n_estimators=100)
+        #sklearn.dummy.DummyClassifier(random_state=random_seed),
+        #sklearn.tree.DecisionTreeClassifier(random_state=random_seed),
+        #sklearn.ensemble.RandomForestClassifier(random_state=random_seed, n_estimators=100)
     ]
 
     results = []
@@ -131,19 +131,24 @@ def run(args):
             frame_processed = frame_processed.fillna(-1)
             clf = sklearn.ensemble.RandomForestClassifier(n_estimators=100, random_state=0)
             clf.fit(frame_processed.to_numpy(dtype=float), labels)
-            importances = sklearn.inspection.permutation_importance(
-                clf,
-                frame_processed.to_numpy(dtype=float),
-                labels,
-                n_repeats=10,
-                random_state=0)
-            #std = np.std([
-            #    tree.feature_importances_ for tree in clf.estimators_],
-            #axis=0)
+            # importances = sklearn.inspection.permutation_importance(
+            #     clf,
+            #     frame_processed.to_numpy(dtype=float),
+            #     labels,
+            #     n_repeats=10,
+            #     random_state=0)
+            importances = np.array([tree.feature_importances_ for tree in clf.estimators_])
+            avg = np.mean(importances, axis=0)
+            std = np.std(importances, axis=0)
+
+            for avg1, avg2 in zip(avg, clf.feature_importances_):
+                if np.abs(avg1 - avg2) > 0.00001:
+                    # double check
+                    raise ValueError()
             forest_importances = pd.DataFrame({
                 'column': frame_processed.columns.values,
-                'importance': importances.importances_mean,
-                'std': importances.importances_std
+                'importance': clf.feature_importances_,
+                'std': std
             })
 
             output_file_csv = os.path.join(args.output_dir, "importances_%f_%s" % (severity_threshold, filename))

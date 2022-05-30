@@ -8,14 +8,9 @@ import pandas as pd
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    #parser.add_argument('--matrices_understand_dir', type=str, default=os.path.expanduser('~/data/codequality/understand_matrices'))
-    #parser.add_argument('--matrices_pmd_dir', type=str, default=os.path.expanduser('~/data/codequality/PMD_matrices_processed'))
-    #parser.add_argument('--output_dir', type=str, default=os.path.expanduser('~/experiments/code_smells/'))
-    parser.add_argument('--matrices_understand_dir', type=str,
-                        default=os.path.expanduser('D:/Research/experiment/codequality/codequality/data/understand_matrices/'))
-    parser.add_argument('--matrices_pmd_dir', type=str,
-                        default=os.path.expanduser('D:/Research/experiment/codequality/codequality/data/PMD_matrices_processed/'))
-    parser.add_argument('--output_dir', type=str, default=os.path.expanduser('D:/Research/experiment/codequality/codequality/code_smells/'))
+    parser.add_argument('--matrices_understand_dir', type=str, default=os.path.expanduser('~/data/codequality/understand_matrices'))
+    parser.add_argument('--matrices_pmd_dir', type=str, default=os.path.expanduser('~/data/codequality/PMD_matrices_processed'))
+    parser.add_argument('--output_dir', type=str, default=os.path.expanduser('~/experiments/code_smells/'))
     parser.add_argument('--code_smells_path', type=str, default='../data/code_smells.csv')
     parser.add_argument('--included_projects', type=str, default='../data/included_projects.csv')
     parser.add_argument('--max_projects', type=int, default=None)

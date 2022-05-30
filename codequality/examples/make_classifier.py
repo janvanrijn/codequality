@@ -5,7 +5,7 @@ import os
 import pandas as pd
 import typing
 
-import codequality.pmd_models
+import codequality.codequality.pmd_models
 
 import sklearn
 import sklearn.dummy
@@ -77,9 +77,9 @@ def run(args):
     random_seed = 0
 
     clfs = [
-        #sklearn.dummy.DummyClassifier(random_state=random_seed),
-        #sklearn.tree.DecisionTreeClassifier(random_state=random_seed),
-        #sklearn.ensemble.RandomForestClassifier(random_state=random_seed, n_estimators=100)
+        sklearn.dummy.DummyClassifier(random_state=random_seed),
+        sklearn.tree.DecisionTreeClassifier(random_state=random_seed),
+        sklearn.ensemble.RandomForestClassifier(random_state=random_seed, n_estimators=100)
     ]
 
     results = []
@@ -92,8 +92,8 @@ def run(args):
         logging.info("======= Smell Type: %s =======" % filename)
 
         file = os.path.join(args.input_dir, file)
-        frame = pd.read_csv(file)
         for severity_threshold in args.severity_thresholds:
+            frame = pd.read_csv(file)
             logging.info("======= Severity Threshold: %s =======" % severity_threshold)
             data, labels, frame_processed = get_data_and_labels(frame, severity_threshold)
             frame['label'] = labels
@@ -131,12 +131,12 @@ def run(args):
             frame_processed = frame_processed.fillna(-1)
             clf = sklearn.ensemble.RandomForestClassifier(n_estimators=100, random_state=0)
             clf.fit(frame_processed.to_numpy(dtype=float), labels)
-            # importances = sklearn.inspection.permutation_importance(
-            #     clf,
-            #     frame_processed.to_numpy(dtype=float),
-            #     labels,
-            #     n_repeats=10,
-            #     random_state=0)
+            importances = sklearn.inspection.permutation_importance(
+                clf,
+                frame_processed.to_numpy(dtype=float),
+                labels,
+                n_repeats=10,
+                random_state=0)
             importances = np.array([tree.feature_importances_ for tree in clf.estimators_])
             avg = np.mean(importances, axis=0)
             std = np.std(importances, axis=0)

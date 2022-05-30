@@ -26,18 +26,24 @@ def run(args):
     for smell_type in df['smell type'].unique():
         smell_name = smell_type.split('.')[0]
         results_smell = df.loc[df['smell type'] == smell_type]
+        pd.set_option('display.max_columns', None)
+
         for measure in args.measures:
             fig1, ax1 = plt.subplots()
             ax1.set_xlabel('Severity Threshold')
             ax1.set_ylabel('Performance')
-            for classifier in ['PMD Classifier', 'Decision Tree', 'Random Forest', 'Majority Class Classifier']:
-                results_classifier = results_smell.loc[results_smell['classifier'] == classifier].set_index([
-                    'severity_threshold'])
+
+            # #Note:  results_smell['classifier'].unique() = ['DummyClassifier(random_state=0)' 'DecisionTreeClassifier(random_state=0)' 'RandomForestClassifier(random_state=0)' 'pmd classifier']
+            for classifier in results_smell['classifier'].unique():
+                results_classifier = results_smell.loc[results_smell['classifier'] == classifier].set_index(['severity_threshold'])
                 x = results_classifier.index.to_numpy(dtype=float)
                 y = results_classifier[measure].to_numpy(dtype=float)
                 if np.any((y > 0)):
                     ax1.plot(x, y, '-+', label=classifier)
+
             ax1.legend(loc='lower right')
+            # Use when easier-to-read labels is preferred.
+            # ax1.legend(['Majority Class Classifier', 'Decision Tree', 'Random Forest', 'PMD Classifier'], loc='lower right')
             filename = os.path.join(args.output_dir, '%s_%s.pdf' % (smell_name, measure))
             plt.savefig(filename)
             plt.close()

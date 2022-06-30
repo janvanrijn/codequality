@@ -1,5 +1,6 @@
-# codequality
+# Automatic Human-Like Code Smell Detection
 
-## open questions
+## Chitsutha Soomlek, Jan N. van Rijn, and Marcello M. Bonsangue
 
-* missing values (how does PMD handle these, are the PMD matrices complete?)
+* Published in Soomlek, C., van Rijn, J.N., Bonsangue, M.M.: Automatic human-like detection of code
+smells. In: International Conference on Discovery Science, pp. 19–28. Springer (2021)
